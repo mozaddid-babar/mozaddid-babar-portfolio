@@ -557,14 +557,54 @@ export class PortfolioDatabase {
   private isConnectedToMongo: boolean = false;
   private mongoError: string | null = null;
   private lastMongoSync: string | null = null;
+  private cloudUpdatedAt: string | null = null;
+  private lastRetryAt = 0;
+  private pendingWrites: Promise<unknown>[] = [];
+  private mongoReady: Promise<boolean>;
 
   constructor() {
     this.ensureDirectory();
     this.data = this.loadData();
     // Initialize MongoDB Atlas connection asynchronously in background
-    this.initMongo().catch(err => {
+    this.mongoReady = this.initMongo().catch(err => {
       console.warn('[PortfolioDB] Mongo initial connection deferred:', err.message);
+      return false;
     });
+  }
+
+  /** Serverless: pull the latest cloud copy if another instance changed it. */
+  public async refreshFromCloud(): Promise<void> {
+    await this.mongoReady;
+    const hasUri = Boolean(process.env.MONGODB_URI?.trim());
+    if (!this.isConnectedToMongo) {
+      if (!hasUri || Date.now() - this.lastRetryAt < 30000) return;
+      this.lastRetryAt = Date.now();
+      this.mongoReady = this.initMongo().catch(() => false);
+      await this.mongoReady;
+      if (!this.isConnectedToMongo) return;
+    }
+    try {
+      const col = this.mongoCollection!;
+      const meta: any = await col.findOne({ _id: 'main_portfolio' as any }, { projection: { updatedAt: 1 } });
+      if (!meta) return;
+      if (meta.updatedAt && meta.updatedAt === this.cloudUpdatedAt) return;
+      const doc: any = await col.findOne({ _id: 'main_portfolio' as any });
+      if (doc) {
+        const { _id, updatedAt, ...rest } = doc;
+        this.data = this.normalizeData(rest);
+        this.cloudUpdatedAt = updatedAt || null;
+      }
+    } catch (err: any) {
+      this.mongoError = err.message;
+      console.error('[PortfolioDB] refreshFromCloud failed:', err.message);
+    }
+  }
+
+  /** Serverless: wait until all queued MongoDB writes have finished. */
+  public async flush(): Promise<void> {
+    const writes = this.pendingWrites;
+    this.pendingWrites = [];
+    await Promise.allSettled(writes);
   }
 
   private ensureDirectory() {
@@ -698,12 +738,14 @@ export class PortfolioDatabase {
           updatedAt: new Date().toISOString()
         };
         await this.mongoCollection.replaceOne({ _id: 'main_portfolio' as any }, payload as any, { upsert: true });
+        this.cloudUpdatedAt = payload.updatedAt;
         console.log('[PortfolioDB] MongoDB Atlas auto-seeding completed successfully!');
       } else {
         // Cloud data exists: load latest into in-memory cache
         console.log('[PortfolioDB] Successfully retrieved latest portfolio dataset from MongoDB Atlas.');
         const { _id, updatedAt, ...rest } = cloudDoc as any;
         this.data = this.normalizeData(rest);
+        this.cloudUpdatedAt = updatedAt || null;
         this.saveLocalBackup();
       }
 
@@ -748,6 +790,8 @@ export class PortfolioDatabase {
   }
 
   private saveLocalBackup() {
+    // Serverless filesystems are read-only / ephemeral: MongoDB is the source of truth there
+    if (process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME) return;
     try {
       this.ensureDirectory();
       fs.writeFileSync(DB_FILE, JSON.stringify(this.data, null, 2), 'utf-8');
@@ -768,15 +812,17 @@ export class PortfolioDatabase {
         ...this.data,
         updatedAt: new Date().toISOString()
       };
-      this.mongoCollection.replaceOne({ _id: 'main_portfolio' as any }, payload as any, { upsert: true })
+      const write = this.mongoCollection.replaceOne({ _id: 'main_portfolio' as any }, payload as any, { upsert: true })
         .then(() => {
           this.lastMongoSync = new Date().toISOString();
+          this.cloudUpdatedAt = payload.updatedAt;
           this.mongoError = null;
         })
         .catch((err: any) => {
           console.error('[PortfolioDB] Asynchronous sync to MongoDB Atlas failed:', err.message);
           this.mongoError = err.message;
         });
+      this.pendingWrites.push(write);
     }
   }
 
