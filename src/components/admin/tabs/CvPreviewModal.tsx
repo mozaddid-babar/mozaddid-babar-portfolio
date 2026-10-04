@@ -1,0 +1,1 @@
+export { CvPreviewModal } from '../../CvPreviewModal';

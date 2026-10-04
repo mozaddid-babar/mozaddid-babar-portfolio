@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Updated Features & Prompts - Portfolio Documentation</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 18mm 18mm 18mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      line-height: 1.6;
+      margin: 0;
+      padding: 30px;
+      background-color: #f8fafc;
+    }
+    .container {
+      max-width: 820px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 40px 48px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e2e8f0;
+    }
+    h1 {
+      font-size: 26px;
+      color: #0f172a;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 12px;
+      margin-top: 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    h2 {
+      font-size: 19px;
+      color: #1e3a8a;
+      border-bottom: 1px solid #cbd5e1;
+      padding-bottom: 6px;
+      margin-top: 32px;
+    }
+    h3 {
+      font-size: 15px;
+      color: #0f172a;
+      margin-top: 20px;
+      margin-bottom: 6px;
+    }
+    p, li {
+      font-size: 13.5px;
+      color: #334155;
+    }
+    ul {
+      margin-top: 6px;
+      padding-left: 22px;
+    }
+    li {
+      margin-bottom: 4px;
+    }
+    code, pre {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    }
+    pre {
+      background-color: #0f172a;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 12px 0 20px 0;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+    .print-bar {
+      margin-bottom: 24px;
+      padding: 12px 18px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .print-btn {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .print-btn:hover {
+      background: #1d4ed8;
+    }
+    @media print {
+      body {
+        background: white;
+        padding: 0;
+      }
+      .container {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }
+      .print-bar {
+        display: none !important;
+      }
+      pre {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1;
+      }
+      h2 {
+        break-after: avoid;
+      }
+      .feature-block, pre {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="print-bar">
+      <span><strong>Save as PDF:</strong> Click the button or press <kbd>Ctrl+P</kbd> (<kbd>Cmd+P</kbd>) & choose <em>Save as PDF</em>.</span>
+      <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+
+    <h1>Portfolio Features & Generation Prompts</h1>
+    <p><em>Documentation of all updated features generated today, along with ready-to-use prompts for reproducing or extending them.</em></p>
+
+    <h2>Part 1: Features Updated & Generated Today</h2>
+
+    <div class="feature-block">
+      <h3>1. Standard U.S. Ph.D. Scholarship Academic CV Generation</h3>
+      <p><strong>What it does:</strong> Dynamically generates an authentic, high-density academic Curriculum Vitae matching the standard formatting used by U.S. doctoral candidates (modeled directly on <em>I K M Reaz Rahman</em> at UC Berkeley and <em>Md Abir Hossain</em> at Ohio State University).</p>
+      <ul>
+        <li><strong>Research Impact Summary Box:</strong> Dedicated metrics panel displaying Google Scholar Citations, h-index, Journal Articles count, and Conference Papers count to give high academic credibility for early-career researchers.</li>
+        <li><strong>Categorized Publications:</strong> Automatically groups papers into Refereed Journal Articles (<code>[J1]</code>, <code>[J2]</code>), Peer-Reviewed Conference Proceedings (<code>[C1]</code>, <code>[C2]</code>), and Manuscripts Under Review / Preprints.</li>
+        <li><strong>Candidate Name Highlighting:</strong> Automatically bolds and underlines your name in author citations (e.g. <code>MUH Babar</code>).</li>
+        <li><strong>Academic Layout Sections:</strong> Research Profile & Interests, Education (with thesis & advisor), Research & Professional Experience, Featured Technical Projects, Technical Skills, Honors & Awards, Certifications & Workshops, Affiliations, and References.</li>
+        <li><strong>Print-to-PDF Formatting:</strong> Integrated <code>@media print</code> CSS ensuring 8.5" x 11" Letter margins, pure black-and-white contrast, and suppression of modal/site chrome.</li>
+      </ul>
+    </div>
+
+    <div class="feature-block">
+      <h3>2. Two-Tier Hide/Unhide (<code>showInCv</code>) Synchronization</h3>
+      <p><strong>What it does:</strong> Ensures the generated CV strictly reflects the visibility switches configured in your Admin Console.</p>
+      <ul>
+        <li><strong>Section-Level Filtering:</strong> If a section has <code>CV: Off</code> (<code>showInCv: false</code>) in Section Layout, that entire section is omitted from the CV.</li>
+        <li><strong>Item-Level Filtering:</strong> If an individual paper, skill, work experience, education entry, project, award, or certification has its toggle turned off, it is filtered out of the CV while remaining on the frontend (or vice versa).</li>
+        <li><strong>Contact & Social Fields:</strong> Custom contacts and social profiles respect their individual <code>showInCv</code> switches.</li>
+      </ul>
+    </div>
+
+    <div class="feature-block">
+      <h3>3. Frontend "View CV" Modal & Actions</h3>
+      <p><strong>What it does:</strong> Replaces static external download links with a live interactive modal popup across the entire site.</p>
+      <ul>
+        <li><strong>Hero Section:</strong> Upgraded action button from static link to an interactive "View CV" button.</li>
+        <li><strong>Desktop Header:</strong> Added a sleek "View CV" button in the top navigation bar right next to the dark-mode switch.</li>
+        <li><strong>Mobile Drawer:</strong> Added a full-width "View CV" option in the mobile menu.</li>
+        <li><strong>Modal Controls:</strong> Live document viewing, active section counter (<code>X sections active</code>), Print / Save as PDF button, and direct Download PDF button.</li>
+      </ul>
+    </div>
+
+    <div class="feature-block">
+      <h3>4. Modern Glassmorphic Horizon: Distinct Section Titles & Colors</h3>
+      <p><strong>What it does:</strong> Eliminates monotonous, repetitive blue headings and matched cards across the site, giving every section its own jewel-toned identity.</p>
+      <ul>
+        <li><strong>Floating Frosted Badges:</strong> Glowing pill badges with animated status beacons, category-tailored icons, and tracked uppercase labels.</li>
+        <li><strong>Dual-Tone Gradient Headings:</strong> Bold <code>&lt;h2&gt;</code> typography with dual-tone shimmer gradients and descriptive subtitles.</li>
+        <li><strong>Dedicated Color Palettes:</strong>
+          <ul>
+            <li><strong>Publications:</strong> Sapphire & Indigo (<code>[ BookOpen | RESEARCH & SCHOLARLY WORKS ]</code>), dark charcoal titles, italic academic venue styling, neutral segmented filter pills.</li>
+            <li><strong>Projects:</strong> Emerald & Mint Teal (<code>[ Code2 | ENGINEERING & APPLIED AI ]</code>).</li>
+            <li><strong>Skills & Capabilities:</strong> Amethyst & Royal Violet (<code>[ Cpu | EXPERTISE & PROFICIENCIES ]</code>).</li>
+            <li><strong>Experience & Education:</strong> Amber & Warm Gold (<code>[ Briefcase | CAREER & ACADEMIA ]</code>).</li>
+            <li><strong>Research Identity (About):</strong> Rose & Coral (<code>[ Sparkles | RESEARCH IDENTITY ]</code>).</li>
+            <li><strong>Certifications:</strong> Cyan & Cerulean (<code>[ Award | PROFESSIONAL CREDENTIALS ]</code>).</li>
+            <li><strong>Honors & Activities:</strong> Gold & Amber (<code>[ Trophy | DISTINCTIONS & ACADEMIC SERVICE ]</code>).</li>
+            <li><strong>Achievements:</strong> Violet & Fuchsia (<code>[ Star | KEY MILESTONES & HONORS ]</code>).</li>
+            <li><strong>Volunteer Service:</strong> Emerald & Forest (<code>[ HeartHandshake | COMMUNITY ENGAGEMENT ]</code>).</li>
+            <li><strong>References:</strong> Indigo & Slate (<code>[ UserCheck | RECOMMENDATIONS & ADVISORS ]</code>).</li>
+            <li><strong>Contact:</strong> Teal & Sage (<code>[ Send | COMMUNICATION & INQUIRIES ]</code>).</li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+
+    <div class="feature-block">
+      <h3>5. Calmer, Smoother Project Card Animations</h3>
+      <p><strong>What it does:</strong> Replaces abrupt, fast snappy movements in the Projects section with smooth, deliberate pacing.</p>
+      <ul>
+        <li>Extended <code>duration</code> to <code>1.3s</code> with custom cubic bezier ease <code>[0.16, 1, 0.3, 1]</code>.</li>
+        <li>Softened horizontal opposite-angle displacements from ±75px to ±50px with staggered <code>(idx % 2) * 0.16s</code> delays.</li>
+      </ul>
+    </div>
+
+    <div class="feature-block">
+      <h3>6. Dynamic Top Navigation Bar (Admin Layout Driven)</h3>
+      <p><strong>What it does:</strong> Automatically reflects the sections enabled in the Admin Console layout layer.</p>
+      <ul>
+        <li>Organized into 4 clean primary groups: <strong>Overview</strong>, <strong>Research</strong>, <strong>Work</strong>, and <strong>Contact</strong>.</li>
+        <li><strong>Adaptive Rendering:</strong> Direct link if 1 sub-section is active; glassmorphic dropdown if multiple sub-sections are active; completely hidden if all are disabled.</li>
+        <li><strong>Dynamic Reordering:</strong> Automatically reorders to match the sequence of sections on the page.</li>
+      </ul>
+    </div>
+
+    <h2>Part 2: Prompts to Generate These Features</h2>
+
+    <h3>Prompt 1: Dynamic U.S. Ph.D. Academic CV Generation & Modal</h3>
+    <pre>Create a dynamic Academic Curriculum Vitae (CV) generation system that builds a printable, standard U.S. Ph.D. scholarship application CV directly from the current portfolio profile data.
+
+Requirements:
+1. Target Academic Format: Model the layout after top engineering/CS doctoral candidate CVs (such as I K M Reaz Rahman at UC Berkeley and Md Abir Hossain at Ohio State University).
+2. Layout & Typography:
+   - Clean, formal header with candidate's full name in bold uppercase serif typography, academic headline, and a single-line contact bar (Email, Phone, Location, Google Scholar, ResearchGate, ORCID, GitHub, LinkedIn).
+   - Research Profile & Core Research Interests paragraph.
+   - Dedicated "Research Impact" summary box displaying Google Scholar Citations, h-index, Journal Articles count, and Conference Proceedings count to establish immediate credibility.
+   - Categorized Publications: Group into Refereed Journal Articles ([J1], [J2]), Peer-Reviewed Conference Proceedings ([C1], [C2]), and Preprints / Manuscripts Under Review. Automatically bold and underline the candidate's name in author lists. Include full venue citations in italics, year, and clickable DOI hyperlinks.
+   - Education: Reverse chronological order with Degree, Department, Institution, Dates, CGPA/Rank, Thesis topic, and Research Advisor.
+   - Research & Professional Experience: Position, Lab/Company, Department, Dates, Location, and detailed bullet points describing methodologies and outcomes.
+   - Technical Skills Matrix: Grouped by category (Programming Languages, Machine Learning & AI, Frameworks & Libraries, Tools & Platforms).
+   - Awards, Certifications, Professional Affiliations, and Academic References.
+3. Two-Tier Visibility Filtering:
+   - Section Level: Respect `sec.showInCv !== false`. If a section is toggled off for CV, omit it completely.
+   - Item Level: Respect `item.showInCv !== false` on every publication, skill, project, experience, award, and certificate.
+4. "View CV" Integration:
+   - Replace any static "Download Resume" links with a "View CV" button in the Hero section, Desktop Navbar, Mobile Drawer, and Admin Console.
+   - Clicking "View CV" opens a modal popup displaying the live rendered CV document.
+   - Inside the modal, provide a "Print / Save as PDF" button (triggering window.print()) and a "Download PDF" button.
+   - Include print-specific CSS (@media print) so that printing from the modal hides all page/modal chrome and prints only the clean academic paper on standard Letter/A4 dimensions.</pre>
+
+    <h3>Prompt 2: Modern Glassmorphic Horizon Section Headers & Jewel Palettes</h3>
+    <pre>Redesign all section titles across the portfolio to replace monotonous, single-color headings with the "Modern Glassmorphic Horizon" design system. Each section should have its own distinct jewel-toned color identity:
+
+1. Header Structure for Every Section:
+   - A floating glassmorphic pill badge with a subtle frosted background (backdrop-blur-md), a border tinted to the section's accent color, an animated pulsing status dot, an icon from lucide-react, and tracked uppercase mono text (e.g. [ BookOpen | RESEARCH & SCHOLARLY WORKS ]).
+   - A bold display title (&lt;h2&gt;) featuring a dual-tone gradient shimmer tailored to the section's domain.
+   - A descriptive contextual subtitle explaining the section's contents.
+2. Distinct Color Coding Per Section:
+   - Publications: Sapphire & Deep Indigo theme. Change paper titles to crisp dark slate/white with subtle hover transitions, italicize academic venues, and use neutral segmented filter pills (removing solid blue blocks).
+   - Projects: Emerald & Mint Teal theme.
+   - Skills & Capabilities: Amethyst & Royal Violet theme.
+   - Experience & Education: Amber & Warm Gold theme.
+   - About / Identity: Rose & Coral theme.
+   - Certifications: Cyan & Cerulean theme.
+   - Honors & Activities: Gold & Amber theme.
+   - Achievements: Violet & Fuchsia theme.
+   - Volunteer Service: Emerald & Forest theme.
+   - References: Indigo & Slate theme.
+   - Contact: Teal & Sage theme.
+3. Ensure high contrast in both Light Mode and Dark Mode, with clean responsive padding.</pre>
+
+    <h3>Prompt 3: Calmer, Smoother Project Animations</h3>
+    <pre>Adjust the scroll animations in the Projects section to be calmer, smoother, and cinematic:
+1. Increase the animation duration to 1.3s with a custom cubic bezier ease [0.16, 1, 0.3, 1].
+2. Soften opposite-angle and directional horizontal displacements from ±75px to ±50px.
+3. Add staggered entry delays ((idx % 2) * 0.16s) between alternating project cards so they glide in gracefully without abrupt snapping.</pre>
+
+    <h3>Prompt 4: Dynamic Admin-Driven Top Navigation Bar</h3>
+    <pre>Refactor the top navigation bar to dynamically adapt to section visibility and ordering settings configured in the Admin Console:
+1. Group sections into 4 concise top-level navigation items: Overview, Research, Work, and Contact.
+2. Filter out any section where `showInFrontend === false` or where the section has no data.
+3. Smart Nesting:
+   - If only 1 sub-section in a group is active, the navigation item should be a direct link to that section.
+   - If multiple sub-sections in a group are active, render a clean glassmorphic dropdown menu.
+   - If all sub-sections in a group are hidden, hide that top-level navigation item completely.
+4. Dynamic Ordering: The order of the 4 main navigation groups should dynamically match the order of sections on the page.
+5. Update scrollspy observation so the active navigation indicator accurately highlights the current section as the user scrolls.</pre>
+  </div>
+</body>
+</html>
