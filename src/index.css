@@ -207,3 +207,24 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     color: #0f172a !important;
   }
 }
+
+/* Printable Academic CV Section Heading - Perfectly Mid-Aligned Between Dual Horizontal Lines */
+h2.cv-section-heading {
+  display: block !important;
+  border-top: 1px solid #000000 !important;
+  border-bottom: 1px solid #000000 !important;
+  border-left: none !important;
+  border-right: none !important;
+  padding-top: 4px !important;
+  padding-bottom: 2.5px !important;
+  margin-top: 16px !important;
+  margin-bottom: 10px !important;
+  font-family: "Times New Roman", Times, Georgia, serif !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  letter-spacing: 0px !important;
+  color: #000000 !important;
+  text-align: left !important;
+  box-sizing: border-box !important;
+}

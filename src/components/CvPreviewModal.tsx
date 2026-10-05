@@ -9,6 +9,7 @@ import {
 import { PortfolioData, DEFAULT_SECTIONS, DEFAULT_CV_TITLES, SectionConfig } from '../types';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { replaceOklchInString, oklchToRgb } from '../utils/colorUtils';
 
 /**
  * Generates and downloads a pristine, professional PDF directly using jsPDF + html2canvas.
@@ -77,6 +78,105 @@ export async function generateCvPdfFromElement(
           return true;
         }
         return false;
+      },
+      onclone: (clonedDoc: Document, clonedEl: HTMLElement) => {
+        // 1. Sanitize all <style> tags in cloned document
+        clonedDoc.querySelectorAll('style').forEach(style => {
+          if (style.textContent && style.textContent.includes('oklch')) {
+            style.textContent = replaceOklchInString(style.textContent);
+          }
+        });
+
+        // 2. Convert <link rel="stylesheet"> with oklch into sanitized inline <style> tags
+        const links = Array.from(clonedDoc.querySelectorAll('link[rel="stylesheet"]'));
+        for (const link of links) {
+          try {
+            const href = (link as HTMLLinkElement).href;
+            const sheet = Array.from(document.styleSheets).find(s => s.href === href);
+            if (sheet) {
+              try {
+                const rules = Array.from(sheet.cssRules).map(r => r.cssText).join('\n');
+                if (rules && rules.includes('oklch')) {
+                  const style = clonedDoc.createElement('style');
+                  style.textContent = replaceOklchInString(rules);
+                  link.parentNode?.replaceChild(style, link);
+                }
+              } catch {
+                // Cross-origin stylesheet security barrier, keep link
+              }
+            }
+          } catch {}
+        }
+
+        // 3. Set clean base styles on cloned document
+        if (clonedDoc.body) {
+          clonedDoc.body.style.backgroundColor = '#ffffff';
+          clonedDoc.body.style.color = '#000000';
+        }
+        if (clonedEl) {
+          clonedEl.style.backgroundColor = '#ffffff';
+          clonedEl.style.color = '#000000';
+        }
+
+        // 4. Sanitize all elements: inline styles and computed color properties
+        const colorProps = [
+          'color',
+          'backgroundColor',
+          'borderColor',
+          'borderTopColor',
+          'borderBottomColor',
+          'borderLeftColor',
+          'borderRightColor',
+          'textDecorationColor',
+          'outlineColor',
+          'fill',
+          'stroke'
+        ];
+
+        clonedDoc.querySelectorAll('*').forEach((el: Element) => {
+          const htmlEl = el as HTMLElement;
+          if (htmlEl.style) {
+            for (let i = 0; i < htmlEl.style.length; i++) {
+              const prop = htmlEl.style[i];
+              const val = htmlEl.style.getPropertyValue(prop);
+              if (val && val.includes('oklch')) {
+                htmlEl.style.setProperty(prop, replaceOklchInString(val));
+              }
+            }
+          }
+
+          try {
+            const computed = window.getComputedStyle(htmlEl);
+            for (const prop of colorProps) {
+              const val = (computed as any)[prop];
+              if (val && typeof val === 'string' && val.includes('oklch')) {
+                (htmlEl.style as any)[prop] = oklchToRgb(val);
+              }
+            }
+          } catch {}
+        });
+
+        // 5. Enforce precise vertical centering for all section headings in cloned document
+        clonedDoc.querySelectorAll('.cv-section-heading').forEach((heading: Element) => {
+          const el = heading as HTMLElement;
+          el.style.display = 'block';
+          el.style.borderTop = '1px solid #000000';
+          el.style.borderBottom = '1px solid #000000';
+          el.style.borderLeft = 'none';
+          el.style.borderRight = 'none';
+          el.style.paddingTop = '4px';
+          el.style.paddingBottom = '2.5px';
+          el.style.marginTop = '16px';
+          el.style.marginBottom = '10px';
+          el.style.fontFamily = '"Times New Roman", Times, Georgia, serif';
+          el.style.fontSize = '15px';
+          el.style.fontWeight = '700';
+          el.style.lineHeight = '1';
+          el.style.letterSpacing = '0px';
+          el.style.color = '#000000';
+          el.style.boxSizing = 'border-box';
+          el.style.textAlign = 'left';
+        });
       }
     });
 
@@ -265,7 +365,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
         {parts.map((part, i) => {
           if (regex.test(part)) {
             return (
-              <span key={i} className="font-bold underline decoration-slate-400 text-slate-900">
+              <span key={i} className="font-bold underline decoration-[#94a3b8] text-[#0f172a]">
                 {part}
               </span>
             );
@@ -278,32 +378,30 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
 
   // Helper to render section headings perfectly centered vertically between two horizontal lines
   const renderSectionHeading = (title: string) => (
-    <div
-      className="cv-section-heading my-3.5 text-left"
+    <h2
+      className="cv-section-heading font-bold text-black tracking-normal text-left"
       style={{
+        display: 'block',
         borderTop: '1px solid #000000',
         borderBottom: '1px solid #000000',
-        paddingTop: '5px',
-        paddingBottom: '5px',
+        borderLeft: 'none',
+        borderRight: 'none',
+        paddingTop: '4px',
+        paddingBottom: '2.5px',
         marginTop: '16px',
         marginBottom: '10px',
+        fontFamily: '"Times New Roman", Times, Georgia, serif',
+        fontSize: '15px',
+        fontWeight: 700,
         lineHeight: 1,
+        letterSpacing: '0px',
+        color: '#000000',
+        boxSizing: 'border-box',
         textAlign: 'left'
       }}
     >
-      <h2
-        className="font-bold text-black font-serif tracking-normal"
-        style={{
-          margin: 0,
-          padding: 0,
-          fontSize: '15px',
-          lineHeight: '1.25',
-          letterSpacing: '0px'
-        }}
-      >
-        {title}
-      </h2>
-    </div>
+      {title}
+    </h2>
   );
 
   // Helper to resolve dynamic section title for CV
@@ -335,14 +433,14 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
     if (emailField.showInCv !== false && emailField.value) {
       contactLinks.push({
         label: 'Email',
-        value: <a href={`mailto:${emailField.value}`} className="text-blue-800 hover:underline">{emailField.value}</a>
+        value: <a href={`mailto:${emailField.value}`} className="text-[#1e40af] hover:underline">{emailField.value}</a>
       });
     }
     seenTypes.add('email');
   } else if (profile.email) {
     contactLinks.push({
       label: 'Email',
-      value: <a href={`mailto:${profile.email}`} className="text-blue-800 hover:underline">{profile.email}</a>
+      value: <a href={`mailto:${profile.email}`} className="text-[#1e40af] hover:underline">{profile.email}</a>
     });
     seenTypes.add('email');
   }
@@ -381,26 +479,26 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
 
       if (pLower.includes('website') || pLower.includes('profile link') || pLower.includes('portfolio')) {
         label = 'Profile link';
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">{item.url}</a>;
+        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">{item.url}</a>;
       } else if (pLower.includes('scholar')) {
         label = 'Google Scholar';
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">Scholar Profile</a>;
+        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">Scholar Profile</a>;
       } else if (pLower.includes('orcid')) {
         label = 'ORCID';
         const orcidHref = item.url.startsWith('http') ? item.url : `https://orcid.org/${item.url}`;
-        displayNode = <a href={orcidHref} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">{item.url.replace(/^https?:\/\/orcid\.org\//, '')}</a>;
+        displayNode = <a href={orcidHref} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">{item.url.replace(/^https?:\/\/orcid\.org\//, '')}</a>;
       } else if (pLower.includes('linkedin')) {
         label = 'LinkedIn';
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">LinkedIn Profile</a>;
+        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">LinkedIn Profile</a>;
       } else if (pLower.includes('github')) {
         label = 'GitHub';
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">GitHub Profile</a>;
+        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">GitHub Profile</a>;
       } else if (pLower.includes('researchgate')) {
         label = 'ResearchGate';
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">ResearchGate Profile</a>;
+        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">ResearchGate Profile</a>;
       } else {
         label = item.platform;
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">{item.url.replace(/^https?:\/\/(www\.)?/, '')}</a>;
+        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">{item.url.replace(/^https?:\/\/(www\.)?/, '')}</a>;
       }
 
       contactLinks.push({
@@ -415,26 +513,26 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
     if (profile.social.linkedin && !contactLinks.some(l => l.label === 'LinkedIn')) {
       contactLinks.push({
         label: 'LinkedIn',
-        value: <a href={profile.social.linkedin} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">LinkedIn Profile</a>
+        value: <a href={profile.social.linkedin} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">LinkedIn Profile</a>
       });
     }
     if (profile.social.github && !contactLinks.some(l => l.label === 'GitHub')) {
       contactLinks.push({
         label: 'GitHub',
-        value: <a href={profile.social.github} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">GitHub Profile</a>
+        value: <a href={profile.social.github} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">GitHub Profile</a>
       });
     }
     if (profile.social.scholar && !contactLinks.some(l => l.label === 'Google Scholar')) {
       contactLinks.push({
         label: 'Google Scholar',
-        value: <a href={profile.social.scholar} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">Scholar Profile</a>
+        value: <a href={profile.social.scholar} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">Scholar Profile</a>
       });
     }
     if (profile.social.orcid && !contactLinks.some(l => l.label === 'ORCID')) {
       const orcidHref = profile.social.orcid.startsWith('http') ? profile.social.orcid : `https://orcid.org/${profile.social.orcid}`;
       contactLinks.push({
         label: 'ORCID',
-        value: <a href={orcidHref} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">{profile.social.orcid.replace(/^https?:\/\/orcid\.org\//, '')}</a>
+        value: <a href={orcidHref} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">{profile.social.orcid.replace(/^https?:\/\/orcid\.org\//, '')}</a>
       });
     }
   }
@@ -497,7 +595,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
         )}
 
         {/* Contact Links in Two Columns per row, Address in the Last Row */}
-        <div className="mt-3 pt-2 text-[13.5px] font-serif text-black border-t border-slate-300 text-left">
+        <div className="mt-3 pt-2 text-[13.5px] font-serif text-black border-t border-[#cbd5e1] text-left">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-left">
             {contactLinks.map((item, idx) => (
               <div key={idx} className="flex items-baseline gap-1.5 min-w-0">
@@ -507,7 +605,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
             ))}
           </div>
           {addressText && (
-            <div className="mt-1.5 pt-1.5 border-t border-slate-200 text-left flex items-baseline gap-1.5">
+            <div className="mt-1.5 pt-1.5 border-t border-[#e2e8f0] text-left flex items-baseline gap-1.5">
               <span className="font-bold text-black whitespace-nowrap">Address:</span>
               <span className="text-black break-words">{addressText}</span>
             </div>
@@ -558,12 +656,12 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                             <div>
                               {renderFormattedAuthors(pub.authors)} ({pub.year}). {pub.title}. <span className="italic">{pub.venue}</span>.{' '}
                               {pub.doi && (
-                                <a href={`https://doi.org/${pub.doi.replace(/^https?:\/\/doi\.org\//, '')}`} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">
+                                <a href={`https://doi.org/${pub.doi.replace(/^https?:\/\/doi\.org\//, '')}`} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">
                                   DOI: {pub.doi}
                                 </a>
                               )}
                               {pub.citations !== undefined && pub.citations > 0 && (
-                                <span className="ml-1 text-[12px] font-medium text-emerald-800">
+                                <span className="ml-1 text-[12px] font-medium text-[#065f46]">
                                   [{pub.citations} Citations]
                                 </span>
                               )}
@@ -589,12 +687,12 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                             <div>
                               {renderFormattedAuthors(pub.authors)} ({pub.year}). {pub.title}. <span className="italic">{pub.venue}</span>.{' '}
                               {pub.doi && (
-                                <a href={`https://doi.org/${pub.doi.replace(/^https?:\/\/doi\.org\//, '')}`} target="_blank" rel="noreferrer" className="text-blue-800 hover:underline">
+                                <a href={`https://doi.org/${pub.doi.replace(/^https?:\/\/doi\.org\//, '')}`} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">
                                   DOI: {pub.doi}
                                 </a>
                               )}
                               {pub.citations !== undefined && pub.citations > 0 && (
-                                <span className="ml-1 text-[12px] font-medium text-emerald-800">
+                                <span className="ml-1 text-[12px] font-medium text-[#065f46]">
                                   [{pub.citations} Citations]
                                 </span>
                               )}
@@ -619,7 +717,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                             </span>
                             <div>
                               {renderFormattedAuthors(pub.authors)} ({pub.year}). {pub.title}. <span className="italic">{pub.venue}</span>.{' '}
-                              <span className="text-[12px] text-amber-900 font-medium">[{pub.category}]</span>
+                              <span className="text-[12px] text-[#78350f] font-medium">[{pub.category}]</span>
                             </div>
                           </div>
                         ))}
@@ -727,7 +825,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                               </ul>
                             )}
                             {exp.skills && exp.skills.length > 0 && (
-                              <div className="mt-1 text-[12.5px] text-slate-700">
+                              <div className="mt-1 text-[12.5px] text-[#334155]">
                                 <span className="font-semibold">Core Focus:</span> {exp.skills.join(', ')}
                               </div>
                             )}
@@ -758,7 +856,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                           {p.description}
                         </p>
                         {p.technologies && p.technologies.length > 0 && (
-                          <div className="mt-0.5 text-[12.5px] text-slate-700">
+                          <div className="mt-0.5 text-[12.5px] text-[#334155]">
                             <span className="font-semibold">Technologies:</span> {p.technologies.join(', ')}
                           </div>
                         )}
@@ -806,7 +904,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                           <span><span className="font-bold">{a.title}</span>{a.issuer ? `, ${a.issuer}` : ''}</span>
                           {a.date && <span className="text-[13.5px] ml-4">{a.date}</span>}
                         </div>
-                        {a.description && <p className="mt-0.5 leading-[1.5] text-slate-800 text-left">{a.description}</p>}
+                        {a.description && <p className="mt-0.5 leading-[1.5] text-[#1e293b] text-left">{a.description}</p>}
                       </div>
                     ))}
                   </div>
@@ -828,7 +926,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                           <span><span className="font-bold">{a.title}</span>{a.organization ? `, ${a.organization}` : ''}</span>
                           <span className="text-[13.5px] ml-4">{a.year || a.date}</span>
                         </div>
-                        {a.description && <p className="mt-0.5 leading-[1.5] text-slate-800 text-left">{a.description}</p>}
+                        {a.description && <p className="mt-0.5 leading-[1.5] text-[#1e293b] text-left">{a.description}</p>}
                       </div>
                     ))}
                   </div>
@@ -930,7 +1028,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                         {r.email && (
                           <p className="text-black">
                             <span className="font-bold">Email: </span>
-                            <a href={`mailto:${r.email}`} className="text-blue-800 hover:underline">{r.email}</a>
+                            <a href={`mailto:${r.email}`} className="text-[#1e40af] hover:underline">{r.email}</a>
                           </p>
                         )}
                         {r.phone && (
