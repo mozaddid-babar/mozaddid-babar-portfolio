@@ -239,6 +239,25 @@ export function createApp() {
         }
       });
 
+      // Automatically update DB publications with real-time citations if any changed
+      try {
+        const currentPubs = db.getPublications();
+        for (const pub of currentPubs) {
+          const pubTitleLower = pub.title.toLowerCase();
+          const matchedKey = Object.keys(citationsMap).find(
+            k => pubTitleLower.includes(k) || k.includes(pubTitleLower.substring(0, 30))
+          );
+          if (matchedKey) {
+            const newCitations = citationsMap[matchedKey];
+            if (pub.citations !== newCitations) {
+              db.updatePublication(pub.id, { citations: newCitations });
+            }
+          }
+        }
+      } catch (dbErr) {
+        console.warn('Could not auto-persist scholar citations to DB:', dbErr);
+      }
+
       res.json({ success: true, data: citationsMap, message: 'Successfully fetched citations from Google Scholar.' });
     } catch (err: any) {
       console.error("Scholar sync error:", err.message);

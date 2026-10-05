@@ -157,33 +157,73 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   border-radius: 0.5rem;
   background-size: cover;
   background-position: center;
-  box-shadow: 0 4px 14px -4px rgba(0,0,0,0.25);
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.25);
   border: 2px solid white;
   /* 3 pages × 4s each = 12s total cycle */
   animation: pageFlip 12s infinite ease-in-out;
 }
 
 .dark .photo-page {
-  border-color: rgb(30 41 59); /* slate-800 */
+  border-color: rgb(30 41 59);
+  /* slate-800 */
 }
 
 /* stagger: each page offset by one-third of total cycle */
-.photo-page:nth-child(1) { animation-delay: 0s;  z-index: 3; }
-.photo-page:nth-child(2) { animation-delay: -4s; z-index: 2; }
-.photo-page:nth-child(3) { animation-delay: -8s; z-index: 1; }
+.photo-page:nth-child(1) {
+  animation-delay: 0s;
+  z-index: 3;
+}
+
+.photo-page:nth-child(2) {
+  animation-delay: -4s;
+  z-index: 2;
+}
+
+.photo-page:nth-child(3) {
+  animation-delay: -8s;
+  z-index: 1;
+}
 
 @keyframes pageFlip {
+
   /* ── visible / front ── */
-  0%   { transform: rotateY(0deg); opacity: 1; }
-  30%  { transform: rotateY(0deg); opacity: 1; }
+  0% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+
+  30% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+
   /* ── flip open (calendar page turning) ── */
-  36%  { transform: rotateY(-160deg); opacity: 1; }
-  36.5%{ transform: rotateY(-160deg); opacity: 0; }
+  36% {
+    transform: rotateY(-160deg);
+    opacity: 1;
+  }
+
+  36.5% {
+    transform: rotateY(-160deg);
+    opacity: 0;
+  }
+
   /* ── hidden behind the stack ── */
-  37%  { transform: rotateY(0deg); opacity: 0; }
-  97%  { transform: rotateY(0deg); opacity: 0; }
+  37% {
+    transform: rotateY(0deg);
+    opacity: 0;
+  }
+
+  97% {
+    transform: rotateY(0deg);
+    opacity: 0;
+  }
+
   /* ── reappear at bottom of stack ── */
-  100% { transform: rotateY(0deg); opacity: 1; }
+  100% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
 }
 
 .washi-tape {
@@ -194,10 +234,11 @@ html.dark ::-webkit-scrollbar-thumb:hover {
 
 /* Print optimization for CV Modal */
 @media print {
-  body:has(#cv-modal-root) #public-portfolio-root > header,
-  body:has(#cv-modal-root) #public-portfolio-root > main,
-  body:has(#cv-modal-root) #public-portfolio-root > footer,
-  body:has(#cv-modal-root) #public-portfolio-root > button,
+
+  body:has(#cv-modal-root) #public-portfolio-root>header,
+  body:has(#cv-modal-root) #public-portfolio-root>main,
+  body:has(#cv-modal-root) #public-portfolio-root>footer,
+  body:has(#cv-modal-root) #public-portfolio-root>button,
   body:has(#cv-modal-root) .no-print {
     display: none !important;
   }
@@ -208,6 +249,11 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   }
 }
 
+/* Fix html2canvas font metrics baseline calculation with Tailwind CSS preflight */
+img {
+  display: inline-block;
+}
+
 /* Printable Academic CV Section Heading - Perfectly Mid-Aligned Between Dual Horizontal Lines */
 h2.cv-section-heading {
   display: block !important;
@@ -215,8 +261,8 @@ h2.cv-section-heading {
   border-bottom: 1px solid #000000 !important;
   border-left: none !important;
   border-right: none !important;
-  padding-top: 4px !important;
-  padding-bottom: 2.5px !important;
+  padding-top: 2.5px !important;
+  padding-bottom: 3.5px !important;
   margin-top: 16px !important;
   margin-bottom: 10px !important;
   font-family: "Times New Roman", Times, Georgia, serif !important;

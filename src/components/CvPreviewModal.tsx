@@ -1,8 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { 
-  X, 
-  Download, 
-  FileText, 
+import {
+  X,
+  Download,
+  FileText,
   Loader2,
   ExternalLink
 } from 'lucide-react';
@@ -105,7 +105,7 @@ export async function generateCvPdfFromElement(
                 // Cross-origin stylesheet security barrier, keep link
               }
             }
-          } catch {}
+          } catch { }
         }
 
         // 3. Set clean base styles on cloned document
@@ -153,10 +153,21 @@ export async function generateCvPdfFromElement(
                 (htmlEl.style as any)[prop] = oklchToRgb(val);
               }
             }
-          } catch {}
+          } catch { }
         });
 
-        // 5. Enforce precise vertical centering for all section headings in cloned document
+        // 5. Fix html2canvas FontMetrics baseline calculation bug caused by Tailwind preflight (img { display: block })
+        // When img is display: block, html2canvas's temporary measurement img breaks to a new line,
+        // inflating the font baseline by ~6-8px and causing text in bordered containers to crash into bottom borders.
+        const imgFixStyle = clonedDoc.createElement('style');
+        imgFixStyle.textContent = `
+          img {
+            display: inline-block !important;
+          }
+        `;
+        clonedDoc.head.appendChild(imgFixStyle);
+
+        // 6. Enforce precise vertical centering for all section headings in cloned document
         clonedDoc.querySelectorAll('.cv-section-heading').forEach((heading: Element) => {
           const el = heading as HTMLElement;
           el.style.display = 'block';
@@ -164,8 +175,8 @@ export async function generateCvPdfFromElement(
           el.style.borderBottom = '1px solid #000000';
           el.style.borderLeft = 'none';
           el.style.borderRight = 'none';
-          el.style.paddingTop = '4px';
-          el.style.paddingBottom = '2.5px';
+          el.style.paddingTop = '2.5px';
+          el.style.paddingBottom = '3.5px';
           el.style.marginTop = '16px';
           el.style.marginBottom = '10px';
           el.style.fontFamily = '"Times New Roman", Times, Georgia, serif';
@@ -386,8 +397,8 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
         borderBottom: '1px solid #000000',
         borderLeft: 'none',
         borderRight: 'none',
-        paddingTop: '4px',
-        paddingBottom: '2.5px',
+        paddingTop: '2.5px',
+        paddingBottom: '3.5px',
         marginTop: '16px',
         marginBottom: '10px',
         fontFamily: '"Times New Roman", Times, Georgia, serif',
@@ -425,8 +436,8 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
   // 1. Dynamic Contact Channels
   const contactFields = profile.contactFields || [];
 
-  const emailField = contactFields.find(c => 
-    c.title.toLowerCase().trim() === 'email' || 
+  const emailField = contactFields.find(c =>
+    c.title.toLowerCase().trim() === 'email' ||
     (c.value && c.value.toLowerCase() === (profile.email || '').toLowerCase())
   );
   if (emailField) {
@@ -445,8 +456,8 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
     seenTypes.add('email');
   }
 
-  const phoneField = contactFields.find(c => 
-    c.title.toLowerCase().includes('phone') || 
+  const phoneField = contactFields.find(c =>
+    c.title.toLowerCase().includes('phone') ||
     c.title.toLowerCase().includes('mobile') ||
     (c.value && c.value === profile.phone)
   );
@@ -555,8 +566,8 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
     });
 
   // 5. Address Extraction
-  const locationField = contactFields.find(c => 
-    c.title.toLowerCase().includes('location') || 
+  const locationField = contactFields.find(c =>
+    c.title.toLowerCase().includes('location') ||
     c.title.toLowerCase().includes('address')
   );
 
@@ -1118,7 +1129,7 @@ export const CvPreviewModal: React.FC<CvPreviewModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[200] flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md overflow-y-auto cursor-pointer"
       id="cv-modal-root"
       onClick={(e) => {
@@ -1129,19 +1140,18 @@ export const CvPreviewModal: React.FC<CvPreviewModalProps> = ({
       }}
     >
       {/* Modal Container: Identical dimensions and height (92vh) in both Custom and Auto-Generated modes */}
-      <div 
+      <div
         className="relative w-full max-w-5xl h-[90vh] sm:h-[92vh] max-h-[92vh] bg-slate-900 border border-slate-700/80 rounded-3xl shadow-2xl overflow-hidden flex flex-col cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
-        
+
         {/* Top Header Bar */}
         <div className="no-print flex items-center justify-between p-4 sm:p-5 bg-slate-800/95 border-b border-slate-700 sticky top-0 z-20 shrink-0">
           <div className="flex items-center space-x-3">
-            <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${
-              isCustomMode 
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' 
-                : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
-            }`}>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center border ${isCustomMode
+              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+              : 'bg-blue-500/20 text-blue-400 border-blue-500/30'
+              }`}>
               <FileText className="w-5 h-5" />
             </div>
             <div>
@@ -1163,11 +1173,10 @@ export const CvPreviewModal: React.FC<CvPreviewModalProps> = ({
             <button
               onClick={handleDownloadPdf}
               disabled={isDownloading}
-              className={`inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md transition-all cursor-pointer disabled:opacity-50 ${
-                isCustomMode
-                  ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950/40'
-                  : 'bg-blue-600 hover:bg-blue-500 shadow-blue-950/40'
-              }`}
+              className={`inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold text-white shadow-md transition-all cursor-pointer disabled:opacity-50 ${isCustomMode
+                ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950/40'
+                : 'bg-blue-600 hover:bg-blue-500 shadow-blue-950/40'
+                }`}
               title={isCustomMode ? `Download ${customCvFileName}` : 'Download CV as PDF file with active hyperlinks'}
               id="cv-modal-download-btn"
             >
@@ -1234,7 +1243,7 @@ export const CvPreviewModal: React.FC<CvPreviewModalProps> = ({
         ) : (
           /* Printable Academic Paper Viewport (Auto-Generated) */
           <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-8 bg-slate-950/60">
-            <div 
+            <div
               ref={printRef}
               className="cv-printable-document w-full max-w-[794px] mx-auto bg-white text-black p-8 sm:p-[18mm] rounded-xl shadow-2xl border border-slate-200"
               id="cv-paper-preview"

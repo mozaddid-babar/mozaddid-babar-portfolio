@@ -21,14 +21,25 @@ import { SectionHeader } from './SectionHeader';
 import { BibtexModal } from './BibtexModal';
 import { PublicationDetailsModal } from './PublicationDetailsModal';
 
+import { syncCitationsForPublications } from '../utils/citationSync';
+
 interface PublicationsSectionProps {
   publications: Publication[];
   scholarUrl?: string;
   isAlt?: boolean;
   sectionConfig?: SectionConfig;
+  citationCounts?: Record<string, number>;
+  onUpdateCitations?: (counts: Record<string, number>) => void;
 }
 
-export const PublicationsSection: React.FC<PublicationsSectionProps> = ({ publications, scholarUrl, isAlt = false, sectionConfig }) => {
+export const PublicationsSection: React.FC<PublicationsSectionProps> = ({
+  publications,
+  scholarUrl,
+  isAlt = false,
+  sectionConfig,
+  citationCounts: propCitationCounts,
+  onUpdateCitations
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'latest' | 'citations' | 'journal_first' | 'oldest'>('citations');
@@ -36,67 +47,23 @@ export const PublicationsSection: React.FC<PublicationsSectionProps> = ({ public
   const [activeDetailsPub, setActiveDetailsPub] = useState<Publication | null>(null);
 
   // Citations Sync State
-  const [citationCounts, setCitationCounts] = useState<Record<string, number>>({});
+  const [citationCounts, setCitationCounts] = useState<Record<string, number>>(propCitationCounts || {});
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Keep internal citation counts in sync with parent props
+  useEffect(() => {
+    if (propCitationCounts && Object.keys(propCitationCounts).length > 0) {
+      setCitationCounts(prev => ({ ...prev, ...propCitationCounts }));
+    }
+  }, [propCitationCounts]);
 
   const handleSyncCitations = async (currentCounts: Record<string, number>) => {
     setIsSyncing(true);
-    let updatedCount = 0;
-
     try {
-      const newCounts = { ...currentCounts };
-      let scholarSuccess = false;
-
-      // 1. Try Google Scholar Scraper Backend first
-      if (scholarUrl) {
-        try {
-          const scholarRes = await fetch(`/api/scholar/sync?url=${encodeURIComponent(scholarUrl)}`);
-          if (scholarRes.ok) {
-            const data = await scholarRes.json();
-            if (data.success && data.data) {
-              const scholarCitations = data.data as Record<string, number>;
-
-              // Map fetched titles to our publications
-              for (const pub of publications) {
-                const pubTitleLower = pub.title.toLowerCase();
-                const matchedKey = Object.keys(scholarCitations).find(k => pubTitleLower.includes(k) || k.includes(pubTitleLower.substring(0, 30)));
-
-                if (matchedKey) {
-                  newCounts[pub.id] = scholarCitations[matchedKey];
-                  updatedCount++;
-                }
-              }
-              scholarSuccess = true;
-            }
-          }
-        } catch (e) {
-          console.error("Google Scholar backend sync failed, falling back...", e);
-        }
-      }
-
-      // 2. Fallback to Semantic Scholar if Google Scholar failed or wasn't available
-      if (!scholarSuccess) {
-        for (const pub of publications) {
-          if (pub.doi) {
-            try {
-              const cleanDoi = pub.doi.replace('https://doi.org/', '');
-              const res = await fetch(`https://api.semanticscholar.org/graph/v1/paper/DOI:${cleanDoi}?fields=citationCount`);
-              if (res.ok) {
-                const data = await res.json();
-                if (data && typeof data.citationCount === 'number') {
-                  newCounts[pub.id] = data.citationCount;
-                  updatedCount++;
-                }
-              }
-            } catch (e) {
-              console.error("Failed to fetch DOI for", pub.id, e);
-            }
-          }
-        }
-      }
-
-      setCitationCounts(newCounts);
-
+      const synced = await syncCitationsForPublications(publications, scholarUrl);
+      const merged = { ...currentCounts, ...synced };
+      setCitationCounts(merged);
+      onUpdateCitations?.(merged);
     } catch (err: any) {
       console.error('Failed to sync citations.', err);
     } finally {
@@ -106,9 +73,9 @@ export const PublicationsSection: React.FC<PublicationsSectionProps> = ({ public
 
   // Initialize citation counts from props and start auto-sync
   useEffect(() => {
-    const initial: Record<string, number> = {};
+    const initial: Record<string, number> = { ...(propCitationCounts || {}) };
     publications.forEach(pub => {
-      if (pub.citations !== undefined) {
+      if (initial[pub.id] === undefined && pub.citations !== undefined) {
         initial[pub.id] = pub.citations;
       }
     });
