@@ -43,11 +43,11 @@ export function App() {
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('portfolio-theme');
-      if (saved === 'light') return false;
       if (saved === 'dark') return true;
-      return document.documentElement.classList.contains('dark') || true;
+      if (saved === 'light') return false;
+      return false; // Default to light mode first for new visitors
     } catch (_) {
-      return true;
+      return false;
     }
   });
 
