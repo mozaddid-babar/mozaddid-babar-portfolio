@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { UserCheck, Plus, Edit3, Trash2, X } from 'lucide-react';
+import { UserCheck, Plus, Edit3, Trash2, X, GripVertical } from 'lucide-react';
 import { Reference } from '../../../types';
 import { createReferenceAPI, updateReferenceAPI, deleteReferenceAPI } from '../../../api';
 import { VisibilityToggle } from './VisibilityToggle';
+import { useDragReorder } from './useDragReorder';
 
 interface ReferencesTabProps {
   references?: Reference[];
@@ -23,6 +24,7 @@ export const ReferencesTab: React.FC<ReferencesTabProps> = ({
   });
   const [loading, setLoading] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const { localItems, draggedIndex, getItemProps, getHandleProps } = useDragReorder(references, 'references', onRefresh, showToast);
 
   const openCreate = () => {
     setEditingId(null);
@@ -113,12 +115,16 @@ export const ReferencesTab: React.FC<ReferencesTabProps> = ({
             <p className="text-sm text-slate-400">No references added yet.</p>
           </div>
         ) : (
-          references.map((item) => (
-            <div 
+          localItems.map((item, index) => (
+            <div
               key={item.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl bg-slate-800/90 border border-slate-700 hover:border-slate-600 transition-all gap-4"
+              {...getItemProps(index)}
+              className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl bg-slate-800/90 border transition-all gap-4 ${draggedIndex === index ? 'opacity-50 border-brand-500 scale-[0.98]' : 'border-slate-700 hover:border-slate-600'}`}
             >
               <div className="flex items-center gap-4">
+                <div {...getHandleProps(index)} className="text-slate-500 cursor-grab hover:text-slate-300 active:cursor-grabbing p-1 -ml-2">
+                  <GripVertical className="w-5 h-5" />
+                </div>
                 {item.imageUrl && (
                   <img src={item.imageUrl} alt={item.name} className="w-10 h-10 rounded-lg object-cover bg-slate-700" />
                 )}

@@ -61,6 +61,8 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects, isAl
     }
 
     const isEven = idx % 2 === 0;
+    const githubUrl = project.githubShowInFrontend !== false ? project.githubUrl : undefined;
+    const liveUrl = project.liveShowInFrontend !== false ? project.liveUrl : undefined;
 
     return (
       <ScrollReveal
@@ -92,11 +94,11 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects, isAl
             <h3 className="text-lg font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors duration-300 leading-snug">
               {project.title}
             </h3>
-            {(project.githubUrl || project.liveUrl) && (
+            {(githubUrl || liveUrl) && (
               <div className="flex items-center space-x-3 shrink-0 pt-1">
-                {project.githubUrl && (
+                {githubUrl && (
                   <a
-                    href={project.githubUrl}
+                    href={githubUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors duration-300"
@@ -105,9 +107,9 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects, isAl
                     <Github className="w-[18px] h-[18px]" />
                   </a>
                 )}
-                {project.liveUrl && (
+                {liveUrl && (
                   <a
-                    href={project.liveUrl}
+                    href={liveUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors duration-300"
@@ -162,9 +164,9 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects, isAl
 
             const wrapperClass = "photo-stack absolute right-4 bottom-4 w-28 h-20 sm:w-36 sm:h-24";
 
-            return project.liveUrl ? (
+            return liveUrl ? (
               <a
-                href={project.liveUrl}
+                href={liveUrl}
                 target="_blank"
                 rel="noreferrer"
                 className={`${wrapperClass} block cursor-pointer group-hover:scale-105 transition-transform duration-300 ease-out`}

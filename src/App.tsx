@@ -28,13 +28,20 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 import { ScrollReveal } from './components/ScrollReveal';
 import { SectionMotionWrapper } from './components/motion/SectionMotionWrapper';
 import { CvPreviewModal, CvDocumentContent, generateCvPdfFromElement } from './components/CvPreviewModal';
-import { LoadingScreen } from './components/LoadingScreen';
 
+// Keep scroll animations calm and consistent for an academic audience.
+// Set to false to use the per-section motion and hover effects chosen in the admin console.
+const CALM_MOTION = true;
+
+const PageLoader = () => (
+  <div className="min-h-screen bg-white dark:bg-[#0B0F17] flex items-center justify-center" aria-label="Loading">
+    <span className="w-6 h-6 border-2 border-slate-300 dark:border-slate-700 border-t-brand-600 rounded-full animate-spin" />
+  </div>
+);
 
 export function App() {
   const [data, setData] = useState<PortfolioData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [splashFinished, setSplashFinished] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [route, setRoute] = useState<'home' | 'admin'>(() => {
     return window.location.pathname.startsWith('/admin') ? 'admin' : 'home';
@@ -191,39 +198,8 @@ export function App() {
     setIsAuth(isAdminLoggedIn());
   };
 
-  if (!splashFinished) {
-    return (
-      <LoadingScreen
-        isReady={!loading && !!data && !error}
-        error={error}
-        onRetry={() => {
-          setLoading(true);
-          setError(null);
-          loadData();
-        }}
-        onFinished={() => setSplashFinished(true)}
-        candidateName={data?.profile?.shortName || data?.profile?.name || "Mozaddid Babar"}
-        fullName={data?.profile?.name || "Mozaddid Ul Hoque Babar"}
-        welcomeText={data?.sections?.find(s => s.id === 'hero')?.topText || 'WELCOME'}
-      />
-    );
-  }
-
   if (loading && !data) {
-    return (
-      <LoadingScreen
-        isReady={false}
-        error={error}
-        onRetry={() => {
-          setLoading(true);
-          setError(null);
-          loadData();
-        }}
-        candidateName="Mozaddid Babar"
-        fullName="Mozaddid Ul Hoque Babar"
-        welcomeText="WELCOME"
-      />
-    );
+    return <PageLoader />;
   }
 
   if (error || !data) {
@@ -337,6 +313,7 @@ export function App() {
           <PublicationsSection
             publications={data.publications.filter(p => p.showInFrontend !== false)}
             scholarUrl={data.profile.social.scholar}
+            ownerName={data.profile.name}
             isAlt={isAlt}
             sectionConfig={sec}
           />
@@ -458,8 +435,8 @@ export function App() {
       <SectionMotionWrapper
         key={sec.id}
         id={`section-motion-${sec.id}`}
-        motionCategory={sec.motionCategory || 'perspective-flip'}
-        hoverEffect={sec.hoverEffect || 'tilt-3d'}
+        motionCategory={CALM_MOTION ? 'subtle-elevation' : (sec.motionCategory || 'perspective-flip')}
+        hoverEffect={CALM_MOTION ? 'none' : (sec.hoverEffect || 'tilt-3d')}
       >
         {content}
       </SectionMotionWrapper>

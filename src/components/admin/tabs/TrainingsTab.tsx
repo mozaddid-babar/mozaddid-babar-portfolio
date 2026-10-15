@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { VisibilityToggle } from './VisibilityToggle';
-import { Award, Plus, Edit3, Trash2, X, ExternalLink } from 'lucide-react';
+import { Award, Plus, Edit3, Trash2, X, ExternalLink, GripVertical } from 'lucide-react';
+import { useDragReorder } from './useDragReorder';
 import { Training } from '../../../types';
 import {
   createTrainingAPI, updateTrainingAPI, deleteTrainingAPI
@@ -31,6 +32,7 @@ export const TrainingsTab: React.FC<TrainingsTabProps> = ({
   const [skillsInput, setSkillsInput] = useState('');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const { localItems, draggedIndex, getItemProps, getHandleProps } = useDragReorder(trainings, 'trainings', onRefresh, showToast);
 
   const openCreateModal = () => {
     setEditingId(null);
@@ -124,8 +126,11 @@ export const TrainingsTab: React.FC<TrainingsTabProps> = ({
               <p className="text-slate-400">No trainings added yet.</p>
             </div>
           ) : (
-            trainings.map((training) => (
-              <div key={training.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl bg-slate-800/90 border border-slate-700 hover:border-slate-600 transition-all gap-4">
+            localItems.map((training, index) => (
+              <div key={training.id} {...getItemProps(index)} className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl bg-slate-800/90 border transition-all gap-4 ${draggedIndex === index ? 'opacity-50 border-brand-500 scale-[0.98]' : 'border-slate-700 hover:border-slate-600'}`}>
+                <div {...getHandleProps(index)} className="hidden sm:block text-slate-500 cursor-grab hover:text-slate-300 active:cursor-grabbing p-1 -ml-2 self-center">
+                  <GripVertical className="w-5 h-5" />
+                </div>
                 <div className="flex-1">
                   <h3 className="text-white font-bold">{training.title}</h3>
                   <div className="text-sm text-slate-400 mt-0.5">

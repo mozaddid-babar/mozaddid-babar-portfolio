@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { VisibilityToggle } from './VisibilityToggle';
-import { Code, Plus, Search, Edit3, Trash2, X, Github, ExternalLink, Sparkles } from 'lucide-react';
+import { useDragReorder } from './useDragReorder';
+import { Code, Plus, Search, Edit3, Trash2, X, Github, ExternalLink, Sparkles, Eye, EyeOff, FileText, GripVertical } from 'lucide-react';
 import { Project } from '../../../types';
 import { createProjectAPI, updateProjectAPI, deleteProjectAPI } from '../../../api';
 
@@ -20,11 +21,43 @@ const EMPTY_PROJ: Omit<Project, 'id'> = {
   technologies: [],
   githubUrl: '',
   liveUrl: '',
+  githubShowInFrontend: true,
+  githubShowInCv: false,
+  liveShowInFrontend: true,
+  liveShowInCv: false,
   featured: false,
   date: '',
   showInFrontend: true,
   showInCv: true
 };
+
+// Compact Frontend / CV switches shown under each project link field
+const LinkVisibility: React.FC<{
+  showInFrontend: boolean;
+  showInCv: boolean;
+  onChange: (field: 'frontend' | 'cv', value: boolean) => void;
+}> = ({ showInFrontend, showInCv, onChange }) => (
+  <div className="flex items-center gap-2 mt-1.5">
+    <button
+      type="button"
+      onClick={() => onChange('frontend', !showInFrontend)}
+      title={showInFrontend ? 'Shown on the website. Click to hide.' : 'Hidden on the website. Click to show.'}
+      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${showInFrontend ? 'bg-brand-950/50 border-brand-800 text-brand-300' : 'bg-slate-900 border-slate-700 text-slate-500 line-through'}`}
+    >
+      {showInFrontend ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+      Frontend
+    </button>
+    <button
+      type="button"
+      onClick={() => onChange('cv', !showInCv)}
+      title={showInCv ? 'Shown in the CV. Click to hide.' : 'Hidden in the CV. Click to show.'}
+      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${showInCv ? 'bg-indigo-950/50 border-indigo-800 text-indigo-300' : 'bg-slate-900 border-slate-700 text-slate-500 line-through'}`}
+    >
+      <FileText className="w-3 h-3" />
+      CV PDF
+    </button>
+  </div>
+);
 
 export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, showToast }) => {
   const [search, setSearch] = useState('');
@@ -35,7 +68,11 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
   const [loading, setLoading] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  const filtered = (projects || []).filter(p => {
+  const { localItems, draggedIndex, getItemProps, getHandleProps } = useDragReorder(projects || [], 'projects', onRefresh, showToast);
+  // Reordering works on the full list, so it is turned off while searching
+  const canReorder = !search.trim();
+
+  const filtered = localItems.filter(p => {
     const q = search.toLowerCase().trim();
     return !q || p.title.toLowerCase().includes(q) || p.category.toLowerCase().includes(q) || p.description.toLowerCase().includes(q);
   });
@@ -59,6 +96,10 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
       technologies: proj.technologies || [],
       githubUrl: proj.githubUrl || '',
       liveUrl: proj.liveUrl || '',
+      githubShowInFrontend: proj.githubShowInFrontend ?? true,
+      githubShowInCv: proj.githubShowInCv ?? false,
+      liveShowInFrontend: proj.liveShowInFrontend ?? true,
+      liveShowInCv: proj.liveShowInCv ?? false,
       featured: !!proj.featured,
       date: proj.date || '',
       showInFrontend: proj.showInFrontend ?? true,
@@ -151,16 +192,24 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
 
       {/* Projects Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filtered.map((proj) => (
+        {filtered.map((proj, index) => (
           <div
             key={proj.id}
-            className="p-5 rounded-2xl bg-slate-800/90 border border-slate-700/80 hover:border-slate-600 transition-all flex flex-col justify-between space-y-4"
+            {...(canReorder ? getItemProps(index) : {})}
+            className={`p-5 rounded-2xl bg-slate-800/90 border transition-all flex flex-col justify-between space-y-4 ${draggedIndex === index ? 'opacity-50 border-brand-500 scale-[0.98]' : 'border-slate-700/80 hover:border-slate-600'}`}
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="px-2 py-0.5 rounded bg-purple-950 text-purple-300 font-semibold text-[11px]">
-                  {proj.category}
-                </span>
+                <div className="flex items-center gap-1">
+                  {canReorder && (
+                    <div {...getHandleProps(index)} className="text-slate-500 cursor-grab hover:text-slate-300 active:cursor-grabbing p-1 -ml-2">
+                      <GripVertical className="w-4 h-4" />
+                    </div>
+                  )}
+                  <span className="px-2 py-0.5 rounded bg-purple-950 text-purple-300 font-semibold text-[11px]">
+                    {proj.category}
+                  </span>
+                </div>
                 {proj.date && <span className="text-slate-400 font-medium">{proj.date}</span>}
               </div>
 
@@ -318,6 +367,11 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
                     placeholder="https://github.com/..."
                     className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
                   />
+                  <LinkVisibility
+                    showInFrontend={formData.githubShowInFrontend ?? true}
+                    showInCv={formData.githubShowInCv ?? false}
+                    onChange={(field, val) => setFormData({ ...formData, [field === 'frontend' ? 'githubShowInFrontend' : 'githubShowInCv']: val })}
+                  />
                 </div>
 
                 <div>
@@ -330,6 +384,11 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
                     onChange={(e) => setFormData({ ...formData, liveUrl: e.target.value })}
                     placeholder="https://demo..."
                     className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
+                  />
+                  <LinkVisibility
+                    showInFrontend={formData.liveShowInFrontend ?? true}
+                    showInCv={formData.liveShowInCv ?? false}
+                    onChange={(field, val) => setFormData({ ...formData, [field === 'frontend' ? 'liveShowInFrontend' : 'liveShowInCv']: val })}
                   />
                 </div>
               <div className="sm:col-span-2">

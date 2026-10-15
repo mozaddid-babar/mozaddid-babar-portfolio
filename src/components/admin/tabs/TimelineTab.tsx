@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { VisibilityToggle } from './VisibilityToggle';
-import { Briefcase, GraduationCap, Plus, Edit3, Trash2, X } from 'lucide-react';
-import { Experience, Education, ExperienceRole } from '../../../types';
-import { 
-  createExperienceAPI, 
-  updateExperienceAPI, 
+import { Briefcase, GraduationCap, Plus, Edit3, Trash2, X, Eye, EyeOff, Paperclip, GripVertical } from 'lucide-react';
+import { useDragReorder } from './useDragReorder';
+import { Experience, Education, ExperienceRole, ExperienceAttachment } from '../../../types';
+import {
+  createExperienceAPI,
+  updateExperienceAPI,
   deleteExperienceAPI,
-  createEducationAPI, 
-  updateEducationAPI, 
-  deleteEducationAPI 
+  createEducationAPI,
+  updateEducationAPI,
+  deleteEducationAPI
 } from '../../../api';
 
 interface TimelineTabProps {
@@ -26,6 +27,8 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
 }) => {
   // Sub-tabs: 'experience' | 'education'
   const [subTab, setSubTab] = useState<'experience' | 'education'>('experience');
+  const expDrag = useDragReorder(experience, 'experience', onRefresh, showToast);
+  const eduDrag = useDragReorder(education, 'education', onRefresh, showToast);
 
   // Experience Modal
   const [isExpModalOpen, setIsExpModalOpen] = useState(false);
@@ -41,7 +44,8 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
     highlights: [],
     skills: [],
     current: false,
-    roles: []
+    roles: [],
+    attachments: []
   });
   const [highlightsInput, setHighlightsInput] = useState('');
   const [skillsInput, setSkillsInput] = useState('');
@@ -85,7 +89,8 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
       highlights: [],
       skills: [],
       current: false,
-      roles: []
+      roles: [],
+      attachments: []
     });
     setHighlightsInput('');
     setSkillsInput('');
@@ -107,6 +112,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
       skills: exp.skills || [],
       current: !!exp.current,
       roles: exp.roles || [],
+      attachments: exp.attachments || [],
       showInFrontend: exp.showInFrontend ?? true,
       showInCv: exp.showInCv ?? true
     });
@@ -116,12 +122,38 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
     setIsEditingRole(false);
   };
 
+  // Proof documents (certificates, letters, images) attached to an experience
+  const guessAttachmentType = (url: string): ExperienceAttachment['type'] => {
+    const u = url.toLowerCase();
+    if (/\.(png|jpe?g|webp|gif)(\?|$)/.test(u)) return 'image';
+    if (u.includes('drive.google.com') || /\.pdf(\?|$)/.test(u)) return 'pdf';
+    return 'link';
+  };
+  const updateAttachment = (idx: number, patch: Partial<ExperienceAttachment>) => {
+    const list = [...(expFormData.attachments || [])];
+    list[idx] = { ...list[idx], ...patch };
+    setExpFormData({ ...expFormData, attachments: list });
+  };
+  const addAttachment = () => {
+    const list = [...(expFormData.attachments || [])];
+    list.push({ id: `att-${Date.now()}`, label: '', url: '', type: 'pdf', showInFrontend: true });
+    setExpFormData({ ...expFormData, attachments: list });
+  };
+  const removeAttachment = (idx: number) => {
+    const list = [...(expFormData.attachments || [])];
+    list.splice(idx, 1);
+    setExpFormData({ ...expFormData, attachments: list });
+  };
+
   const handleExpSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     const parsedHighlights = highlightsInput.split('\n').map(h => h.trim()).filter(Boolean);
     const parsedSkills = skillsInput.split(',').map(s => s.trim()).filter(Boolean);
-    const payload = { ...expFormData, highlights: parsedHighlights, skills: parsedSkills };
+    const parsedAttachments = (expFormData.attachments || [])
+      .filter(a => a.url.trim())
+      .map(a => ({ ...a, url: a.url.trim(), label: a.label.trim() || 'Supporting document' }));
+    const payload = { ...expFormData, highlights: parsedHighlights, skills: parsedSkills, attachments: parsedAttachments };
 
     try {
       if (editingExpId) {
@@ -184,7 +216,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
 
   const handleSaveRole = () => {
     const currentPeriodRange = parsePeriodRange(roleFormData.period);
-    
+
     if (currentPeriodRange.start > 0) {
       const hasOverlap = expFormData.roles?.some((r, idx) => {
         if (idx === editingRoleIdx) return false;
@@ -206,7 +238,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
     const parsedHighlights = roleHighlightsInput.split('\n').map(h => h.trim()).filter(Boolean);
     const parsedSkills = roleSkillsInput.split(',').map(s => s.trim()).filter(Boolean);
     const newRole = { ...roleFormData, highlights: parsedHighlights, skills: parsedSkills };
-    
+
     const updatedRoles = [...(expFormData.roles || [])];
     if (editingRoleIdx !== null) {
       updatedRoles[editingRoleIdx] = newRole;
@@ -285,51 +317,51 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
     }
   };
 
-  
+
   const renderRoleForm = () => (
     <div className="bg-slate-900 border border-slate-700 p-4 rounded-xl space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-sm font-bold text-white">{editingRoleIdx !== null ? 'Edit Role' : 'Add Role'}</h4>
-                      <button type="button" onClick={() => setIsEditingRole(false)} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">Designation / Title</label>
-                        <input type="text" value={roleFormData.title || ''} onChange={e => setRoleFormData({...roleFormData, title: e.target.value})} className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-300 mb-1">Time Period</label>
-                        <input type="text" value={roleFormData.period || ''} onChange={e => { setRolePeriodError(false); setRoleFormData({...roleFormData, period: e.target.value}); }} className={`w-full px-3 py-2 text-xs bg-slate-800 border rounded-lg text-white ${rolePeriodError ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-700'}`} />
-                        {rolePeriodError && (
-                          <p className="text-[10px] text-red-400 mt-1 font-semibold animate-fadeIn">This period overlaps with an existing role.</p>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Location (Optional)</label>
-                      <input type="text" value={roleFormData.location || ''} onChange={e => setRoleFormData({...roleFormData, location: e.target.value})} className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Description</label>
-                      <textarea rows={2} value={roleFormData.description || ''} onChange={e => setRoleFormData({...roleFormData, description: e.target.value})} className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white resize-y" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Highlights (one per line)</label>
-                      <textarea rows={2} value={roleHighlightsInput} onChange={e => setRoleHighlightsInput(e.target.value)} className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white resize-y" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-300 mb-1">Skills (comma separated)</label>
-                      <input type="text" value={roleSkillsInput} onChange={e => setRoleSkillsInput(e.target.value)} className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white" />
-                    </div>
-                    <div className="flex justify-end pt-2">
-                      <button type="button" onClick={handleSaveRole} className="px-3 py-1.5 text-xs font-semibold bg-brand-600 text-white rounded-lg">Save Role</button>
-                    </div>
-                  </div>
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-bold text-white">{editingRoleIdx !== null ? 'Edit Role' : 'Add Role'}</h4>
+        <button type="button" onClick={() => setIsEditingRole(false)} className="text-slate-400 hover:text-white"><X className="w-4 h-4" /></button>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1">Designation / Title</label>
+          <input type="text" value={roleFormData.title || ''} onChange={e => setRoleFormData({ ...roleFormData, title: e.target.value })} className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white" />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1">Time Period</label>
+          <input type="text" value={roleFormData.period || ''} onChange={e => { setRolePeriodError(false); setRoleFormData({ ...roleFormData, period: e.target.value }); }} className={`w-full px-3 py-2 text-xs bg-slate-800 border rounded-lg text-white ${rolePeriodError ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-700'}`} />
+          {rolePeriodError && (
+            <p className="text-[10px] text-red-400 mt-1 font-semibold animate-fadeIn">This period overlaps with an existing role.</p>
+          )}
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-slate-300 mb-1">Location (Optional)</label>
+        <input type="text" value={roleFormData.location || ''} onChange={e => setRoleFormData({ ...roleFormData, location: e.target.value })} className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white" />
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-slate-300 mb-1">Description</label>
+        <textarea rows={2} value={roleFormData.description || ''} onChange={e => setRoleFormData({ ...roleFormData, description: e.target.value })} className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white resize-y" />
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-slate-300 mb-1">Highlights (one per line)</label>
+        <textarea rows={2} value={roleHighlightsInput} onChange={e => setRoleHighlightsInput(e.target.value)} className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white resize-y" />
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-slate-300 mb-1">Skills (comma separated)</label>
+        <input type="text" value={roleSkillsInput} onChange={e => setRoleSkillsInput(e.target.value)} className="w-full px-3 py-2 text-xs bg-slate-800 border border-slate-700 rounded-lg text-white" />
+      </div>
+      <div className="flex justify-end pt-2">
+        <button type="button" onClick={handleSaveRole} className="px-3 py-1.5 text-xs font-semibold bg-brand-600 text-white rounded-lg">Save Role</button>
+      </div>
+    </div>
   );
 
   return (
     <div className="space-y-6 animate-fadeIn" id="admin-timeline-tab">
-      
+
       {/* Header & Sub-tab switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -345,21 +377,19 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
         <div className="flex items-center space-x-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
           <button
             onClick={() => setSubTab('experience')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              subTab === 'experience'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${subTab === 'experience'
                 ? 'bg-brand-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-white'
-            }`}
+              }`}
           >
             Experience ({experience.length})
           </button>
           <button
             onClick={() => setSubTab('education')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              subTab === 'education'
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${subTab === 'education'
                 ? 'bg-brand-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-white'
-            }`}
+              }`}
           >
             Education ({education.length})
           </button>
@@ -380,11 +410,16 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
           </div>
 
           <div className="space-y-3">
-            {experience.map(exp => (
+            {expDrag.localItems.map((exp, index) => (
               <div
                 key={exp.id}
-                className="p-5 rounded-2xl bg-slate-800/90 border border-slate-700/80 hover:border-slate-600 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                {...expDrag.getItemProps(index)}
+                className={`p-5 rounded-2xl bg-slate-800/90 border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${expDrag.draggedIndex === index ? 'opacity-50 border-brand-500 scale-[0.98]' : 'border-slate-700/80 hover:border-slate-600'}`}
               >
+                <div className="flex items-start gap-3">
+                <div {...expDrag.getHandleProps(index)} className="text-slate-500 cursor-grab hover:text-slate-300 active:cursor-grabbing p-1 -ml-2 self-center">
+                  <GripVertical className="w-5 h-5" />
+                </div>
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2 text-xs">
                     <span className="text-brand-400 font-semibold">{exp.period}</span>
@@ -404,6 +439,8 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
                     </div>
                   </div>
                   <p className="text-xs text-slate-400 pt-1 leading-relaxed">{exp.description}</p>
+                </div>
+
                 </div>
 
                 <div className="flex items-center space-x-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-700">
@@ -440,11 +477,16 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
           </div>
 
           <div className="space-y-3">
-            {education.map(edu => (
+            {eduDrag.localItems.map((edu, index) => (
               <div
                 key={edu.id}
-                className="p-5 rounded-2xl bg-slate-800/90 border border-slate-700/80 hover:border-slate-600 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4"
+                {...eduDrag.getItemProps(index)}
+                className={`p-5 rounded-2xl bg-slate-800/90 border transition-all flex flex-col md:flex-row md:items-center justify-between gap-4 ${eduDrag.draggedIndex === index ? 'opacity-50 border-brand-500 scale-[0.98]' : 'border-slate-700/80 hover:border-slate-600'}`}
               >
+                <div className="flex items-start gap-3">
+                <div {...eduDrag.getHandleProps(index)} className="text-slate-500 cursor-grab hover:text-slate-300 active:cursor-grabbing p-1 -ml-2 self-center">
+                  <GripVertical className="w-5 h-5" />
+                </div>
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2 text-xs">
                     <span className="text-blue-400 font-semibold">{edu.year}</span>
@@ -461,6 +503,8 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
                       Thesis: "{edu.thesis}"
                     </p>
                   )}
+                </div>
+
                 </div>
 
                 <div className="flex items-center space-x-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-700">
@@ -602,7 +646,7 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
                     <Plus className="w-3 h-3" /> <span>Add Role</span>
                   </button>
                 </div>
-                
+
                 {expFormData.roles && expFormData.roles.length > 0 && (
                   <div className="space-y-3">
                     {expFormData.roles.map((r, idx) => (
@@ -631,6 +675,64 @@ export const TimelineTab: React.FC<TimelineTabProps> = ({
                     {renderRoleForm()}
                   </div>
                 )}
+              </div>
+
+              {/* Proof Documents Section */}
+              <div className="pt-4 border-t border-slate-700 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-bold text-white">Proof Documents (Optional)</label>
+                  <button type="button" onClick={addAttachment} className="text-xs font-semibold text-brand-400 flex items-center space-x-1 hover:text-brand-300">
+                    <Plus className="w-3 h-3" /> <span>Add Document</span>
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Link a certificate, offer letter or photo that proves this experience (Google Drive links work; share them as "Anyone with the link"). Hidden documents stay here for later but are never sent to the public site.
+                </p>
+
+                {(expFormData.attachments || []).map((att, idx) => (
+                  <div key={att.id} className={`bg-slate-900 border rounded-xl p-3 space-y-2 ${att.showInFrontend === false ? 'border-slate-800 opacity-70' : 'border-slate-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <Paperclip className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <input
+                        type="text"
+                        placeholder="Label, e.g. Experience Certificate"
+                        value={att.label}
+                        onChange={(e) => updateAttachment(idx, { label: e.target.value })}
+                        className="flex-1 min-w-0 px-3 py-1.5 text-xs bg-slate-950 border border-slate-700 rounded-lg text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => updateAttachment(idx, { showInFrontend: att.showInFrontend === false })}
+                        className={`p-1.5 rounded-lg border text-xs flex items-center gap-1 ${att.showInFrontend === false ? 'border-slate-700 text-slate-500' : 'border-emerald-700 text-emerald-400'}`}
+                        title={att.showInFrontend === false ? 'Hidden from the public site' : 'Shown on the public site'}
+                      >
+                        {att.showInFrontend === false ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        <span className="hidden sm:inline">{att.showInFrontend === false ? 'Hidden' : 'Visible'}</span>
+                      </button>
+                      <button type="button" onClick={() => removeAttachment(idx)} className="text-red-400 hover:text-red-300 p-1" aria-label="Remove document">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="url"
+                        placeholder="https://drive.google.com/file/d/.../view"
+                        value={att.url}
+                        onChange={(e) => updateAttachment(idx, { url: e.target.value, type: guessAttachmentType(e.target.value) })}
+                        className="flex-1 min-w-0 px-3 py-1.5 text-xs bg-slate-950 border border-slate-700 rounded-lg text-white"
+                      />
+                      <select
+                        value={att.type}
+                        onChange={(e) => updateAttachment(idx, { type: e.target.value as ExperienceAttachment['type'] })}
+                        className="px-2 py-1.5 text-xs bg-slate-950 border border-slate-700 rounded-lg text-white"
+                      >
+                        <option value="pdf">PDF / Document</option>
+                        <option value="image">Image</option>
+                        <option value="link">Web link</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="flex items-center space-x-2 pt-2">

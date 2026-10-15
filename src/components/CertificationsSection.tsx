@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Award } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Award, ChevronLeft, ChevronRight, ExternalLink, X } from 'lucide-react';
 import { Certification, SectionConfig } from '../types';
 import { SectionHeader } from './SectionHeader';
 
@@ -9,12 +10,79 @@ interface CertificationsSectionProps {
   sectionConfig?: SectionConfig;
 }
 
+const CATEGORY_STYLES: Record<string, string> = {
+  conference: 'text-brand-600 dark:text-brand-400 border-current',
+  competition: 'text-amber-700 dark:text-amber-400 border-current',
+  course: 'text-emerald-700 dark:text-emerald-400 border-current'
+};
+
+// Google Drive's thumbnail endpoint gets throttled when many images load at once,
+// so Drive links get a second host to fall back to before giving up.
+const getDriveId = (url: string): string | null => {
+  if (!/drive\.google\.com|docs\.google\.com/.test(url)) return null;
+  const match = url.match(/\/d\/([\w-]{10,})/) || url.match(/[?&]id=([\w-]{10,})/);
+  return match ? match[1] : null;
+};
+
+const getImageSources = (url: string, width: number): string[] => {
+  const id = getDriveId(url);
+  if (!id) return [url];
+  return [
+    `https://lh3.googleusercontent.com/d/${id}=w${width}`,
+    `https://drive.google.com/thumbnail?id=${id}&sz=w${width}`
+  ];
+};
+
+interface CertImageProps {
+  url?: string;
+  alt: string;
+  width: number;
+  className: string;
+  iconClassName: string;
+  lazy?: boolean;
+}
+
+const CertImage: React.FC<CertImageProps> = ({ url, alt, width, className, iconClassName, lazy = false }) => {
+  const sources = url ? getImageSources(url, width) : [];
+  const [attempt, setAttempt] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setAttempt(0);
+    setLoaded(false);
+  }, [url]);
+
+  if (attempt >= sources.length) {
+    return <Award className={iconClassName} />;
+  }
+
+  return (
+    <>
+      {!loaded && <div className="absolute inset-0 bg-slate-200/70 dark:bg-slate-700/50 animate-pulse" />}
+      <img
+        key={sources[attempt]}
+        src={sources[attempt]}
+        alt={alt}
+        loading={lazy ? 'lazy' : 'eager'}
+        decoding="async"
+        referrerPolicy="no-referrer"
+        className={`${className} transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        onLoad={() => setLoaded(true)}
+        onError={() => {
+          setLoaded(false);
+          setAttempt(a => a + 1);
+        }}
+      />
+    </>
+  );
+};
+
 export const CertificationsSection: React.FC<CertificationsSectionProps> = ({ certifications, isAlt = false, sectionConfig }) => {
   const visibleCerts = certifications.filter(c => c.showInFrontend !== false);
-  if (!visibleCerts || visibleCerts.length === 0) return null;
 
   const [expanded, setExpanded] = useState(false);
-  const [modalCert, setModalCert] = useState<Certification | null>(null);
+  const [modalIndex, setModalIndex] = useState<number | null>(null);
+  const modalCert = modalIndex !== null ? visibleCerts[modalIndex] ?? null : null;
 
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(0);
@@ -30,28 +98,35 @@ export const CertificationsSection: React.FC<CertificationsSectionProps> = ({ ce
   const firstBatch = visibleCerts.slice(0, initialCount);
   const secondBatch = visibleCerts.slice(initialCount);
 
-  const handleRowClick = (cert: Certification) => {
-    setModalCert(cert);
+  const openCert = (cert: Certification) => {
+    setModalIndex(visibleCerts.findIndex(c => c.id === cert.id));
   };
+  const handleRowClick = openCert;
 
   const handleKeyDown = (e: React.KeyboardEvent, cert: Certification) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      setModalCert(cert);
+      openCert(cert);
     }
   };
 
-  const closeModal = () => setModalCert(null);
+  const closeModal = () => setModalIndex(null);
+  const showPrev = () => setModalIndex(i => (i === null ? i : (i - 1 + visibleCerts.length) % visibleCerts.length));
+  const showNext = () => setModalIndex(i => (i === null ? i : (i + 1) % visibleCerts.length));
 
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
+    const handleKeys = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeModal();
+      else if (e.key === 'ArrowLeft') showPrev();
+      else if (e.key === 'ArrowRight') showNext();
     };
-    if (modalCert) {
-      window.addEventListener('keydown', handleEsc);
+    if (modalIndex !== null) {
+      window.addEventListener('keydown', handleKeys);
     }
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [modalCert]);
+    return () => window.removeEventListener('keydown', handleKeys);
+  }, [modalIndex, visibleCerts.length]);
+
+  if (visibleCerts.length === 0) return null;
 
   const renderRow = (cert: Certification) => {
     return (
@@ -68,12 +143,15 @@ export const CertificationsSection: React.FC<CertificationsSectionProps> = ({ ce
         data-desc={cert.description || ''}
       >
         {/* Thumbnail */}
-        <div className="w-[88px] h-[64px] rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-100 dark:bg-slate-800 group-hover:scale-[1.05] transition-all duration-300 flex items-center justify-center shrink-0">
-          {cert.imageUrl ? (
-            <img src={cert.imageUrl} alt={cert.title} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-slate-100 dark:bg-slate-800"></div>
-          )}
+        <div className="relative w-[88px] h-[64px] rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden bg-slate-100 dark:bg-slate-800 group-hover:scale-[1.05] transition-all duration-300 flex items-center justify-center shrink-0">
+          <CertImage
+            url={cert.imageUrl}
+            alt={cert.title}
+            width={240}
+            lazy
+            className="w-full h-full object-cover"
+            iconClassName="w-6 h-6 text-slate-300 dark:text-slate-600"
+          />
         </div>
 
         {/* Title & Issuer */}
@@ -154,69 +232,143 @@ export const CertificationsSection: React.FC<CertificationsSectionProps> = ({ ce
         )}
       </div>
 
-      {/* Lightbox Modal */}
-      {modalCert && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Framed Certificate Modal (portaled to body so section transforms can't clip it) */}
+      {modalCert && modalIndex !== null && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
           <div
             className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm transition-opacity"
             onClick={closeModal}
           ></div>
 
+          {visibleCerts.length > 1 && (
+            <>
+              <button
+                onClick={showPrev}
+                className="absolute left-2 sm:left-4 lg:left-8 top-1/2 -translate-y-1/2 z-20 w-11 h-11 flex items-center justify-center rounded-full bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 text-slate-900 dark:text-white shadow-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                aria-label="Previous certificate"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                onClick={showNext}
+                className="absolute right-2 sm:right-4 lg:right-8 top-1/2 -translate-y-1/2 z-20 w-11 h-11 flex items-center justify-center rounded-full bg-white/90 dark:bg-slate-800/90 hover:bg-white dark:hover:bg-slate-700 text-slate-900 dark:text-white shadow-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                aria-label="Next certificate"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </>
+          )}
+
           <div
-            className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 w-full max-w-[640px] rounded-2xl shadow-2xl overflow-hidden animate-fadeInScale flex flex-col max-h-[90vh]"
+            key={modalCert.id}
+            className="relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-2xl bg-[#e9e4dc] dark:bg-[#1b1f27] shadow-2xl animate-fadeInScale p-4 sm:p-8 lg:p-10 mx-10 sm:mx-14 lg:mx-20"
             role="dialog"
             aria-modal="true"
+            aria-label={modalCert.title}
           >
-            <button
-              onClick={closeModal}
-              className="absolute top-4 right-4 z-10 w-8 h-8 flex items-center justify-center bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-700 rounded-full text-slate-900 dark:text-white shadow-sm transition-colors focus:outline-none"
-              aria-label="Close modal"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-
-            {/* Image Area 16:10 aspect ratio */}
-            <div className="w-full relative pt-[62.5%] bg-slate-100 dark:bg-slate-800 shrink-0 border-b border-slate-200 dark:border-slate-800">
-              {modalCert.imageUrl ? (
-                <img src={modalCert.imageUrl} alt={modalCert.title} className="absolute inset-0 w-full h-full object-cover" />
-              ) : (
-                <div className="absolute inset-0 w-full h-full bg-slate-100 dark:bg-slate-800"></div>
-              )}
-            </div>
-
-            <div className="p-6 sm:p-8 overflow-y-auto">
-              <h3 className="font-sans font-bold text-xl sm:text-2xl text-slate-900 dark:text-white leading-tight mb-2">
-                {modalCert.title}
-              </h3>
-
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-6">
-                <span className="font-sans text-sm font-medium text-slate-600 dark:text-slate-300">
-                  {modalCert.issuer}
-                </span>
-                <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
-                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
-                  Issued {modalCert.date}
-                </span>
-                {modalCert.credentialId && (
-                  <>
-                    <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700 hidden sm:inline-block"></span>
-                    <span className="font-mono text-xs text-slate-400 dark:text-slate-500 w-full sm:w-auto mt-1 sm:mt-0">
-                      ID: {modalCert.credentialId}
-                    </span>
-                  </>
-                )}
+            <div className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr] gap-6 lg:gap-10 items-center">
+              {/* Wooden frame with mat */}
+              <div className="rounded-[3px] p-2.5 sm:p-3.5 bg-gradient-to-br from-[#5a3f26] to-[#2f2013] shadow-[0_2px_0_#23180e,0_24px_48px_rgba(0,0,0,0.28)]">
+                <div className="bg-white dark:bg-[#2a303b] p-3 sm:p-6 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08),inset_0_6px_14px_rgba(0,0,0,0.12)]">
+                  <div className="relative w-full aspect-[1.414/1] bg-slate-50 dark:bg-slate-800 flex items-center justify-center overflow-hidden">
+                    <CertImage
+                      key={modalCert.id}
+                      url={modalCert.imageUrl}
+                      alt={modalCert.title}
+                      width={1200}
+                      className="w-full h-full object-contain"
+                      iconClassName="w-12 h-12 text-slate-300 dark:text-slate-600"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {modalCert.description && (
-                <p className="font-sans text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                  {modalCert.description}
-                </p>
-              )}
+              {/* Record card */}
+              <div className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 sm:p-6 flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-3 pr-9">
+                  {modalCert.category ? (
+                    <span className={`font-mono text-[11px] uppercase tracking-wider px-2 py-0.5 rounded-full border ${CATEGORY_STYLES[modalCert.category.toLowerCase()] || 'text-slate-600 dark:text-slate-300 border-current'}`}>
+                      {modalCert.category}
+                    </span>
+                  ) : <span />}
+                  <span className="font-mono text-xs text-slate-500 dark:text-slate-400 tabular-nums">
+                    {modalIndex + 1} / {visibleCerts.length}
+                  </span>
+                </div>
+
+                <button
+                  onClick={closeModal}
+                  className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+                  aria-label="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+                <div>
+                  <h3 className="font-serif font-semibold text-xl sm:text-2xl text-slate-900 dark:text-white leading-snug">
+                    {modalCert.title}
+                  </h3>
+                  <p className="mt-1.5 text-sm text-slate-600 dark:text-slate-400">{modalCert.issuer}</p>
+                </div>
+
+                <dl className="border-t border-slate-200 dark:border-slate-800 text-sm">
+                  {modalCert.date && (
+                    <div className="flex justify-between gap-3 py-2.5 border-b border-slate-200 dark:border-slate-800">
+                      <dt className="text-slate-500 dark:text-slate-400">Issued</dt>
+                      <dd className="font-mono text-slate-800 dark:text-slate-200 text-right">{modalCert.date}</dd>
+                    </div>
+                  )}
+                  {modalCert.category && (
+                    <div className="flex justify-between gap-3 py-2.5 border-b border-slate-200 dark:border-slate-800">
+                      <dt className="text-slate-500 dark:text-slate-400">Category</dt>
+                      <dd className="font-mono text-slate-800 dark:text-slate-200 text-right">{modalCert.category}</dd>
+                    </div>
+                  )}
+                  {modalCert.credentialId && (
+                    <div className="flex justify-between gap-3 py-2.5 border-b border-slate-200 dark:border-slate-800">
+                      <dt className="text-slate-500 dark:text-slate-400">Credential ID</dt>
+                      <dd className="font-mono text-slate-800 dark:text-slate-200 text-right break-all">{modalCert.credentialId}</dd>
+                    </div>
+                  )}
+                </dl>
+
+                {modalCert.description && (
+                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{modalCert.description}</p>
+                )}
+
+                {modalCert.credentialUrl && (
+                  <div>
+                    <a
+                      href={modalCert.credentialUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold transition-colors"
+                    >
+                      Verify certificate <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                )}
+
+                {visibleCerts.length > 1 && (
+                  <div className="flex flex-wrap gap-1.5 pt-1" aria-label="All certificates">
+                    {visibleCerts.map((c, i) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setModalIndex(i)}
+                        aria-current={i === modalIndex}
+                        title={c.title}
+                        className={`max-w-[180px] truncate px-2.5 py-1 rounded-md border text-xs transition-colors ${i === modalIndex ? 'border-brand-600 text-brand-700 dark:border-brand-400 dark:text-brand-300' : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-400'}`}
+                      >
+                        {c.title}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <style dangerouslySetInnerHTML={{

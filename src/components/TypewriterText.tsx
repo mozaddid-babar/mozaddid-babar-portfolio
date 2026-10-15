@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-export const TypewriterText: React.FC<{ text: string; delay?: number; className?: string }> = ({ text, delay = 0, className }) => {
+export const TypewriterText: React.FC<{ text: string; delay?: number; className?: string; replayOnClick?: boolean }> = ({ text, delay = 0, className, replayOnClick = false }) => {
+  // Browsers block sound until the visitor clicks or presses a key, so a click replays the typing with sound
+  const [replayCount, setReplayCount] = useState(0);
   const [displayedText, setDisplayedText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -20,30 +22,30 @@ export const TypewriterText: React.FC<{ text: string; delay?: number; className?
             audioCtxRef.current = new AudioContext();
           }
         }
-        
+
         if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
           audioCtxRef.current.resume();
         }
-        
+
         if (audioCtxRef.current) {
           const osc = audioCtxRef.current.createOscillator();
           const gain = audioCtxRef.current.createGain();
-          
+
           osc.type = 'square';
           // Randomize frequency slightly to sound more like varied keystrokes
           osc.frequency.setValueAtTime(300 + Math.random() * 100, audioCtxRef.current.currentTime);
           osc.frequency.exponentialRampToValueAtTime(100, audioCtxRef.current.currentTime + 0.05);
-          
+
           gain.gain.setValueAtTime(0.02, audioCtxRef.current.currentTime);
           gain.gain.exponentialRampToValueAtTime(0.001, audioCtxRef.current.currentTime + 0.05);
-          
+
           osc.connect(gain);
           gain.connect(audioCtxRef.current.destination);
-          
+
           osc.start();
           osc.stop(audioCtxRef.current.currentTime + 0.05);
         }
-      } catch(e) {
+      } catch (e) {
         // Ignore autoplay or audio errors
       }
     };
@@ -54,7 +56,7 @@ export const TypewriterText: React.FC<{ text: string; delay?: number; className?
         i++;
         setDisplayedText(text.substring(0, i));
         playClick();
-        
+
         if (i >= text.length) {
           clearInterval(typingInterval);
           setIsTyping(false);
@@ -63,23 +65,35 @@ export const TypewriterText: React.FC<{ text: string; delay?: number; className?
       }, 70); // 70ms per character is a good typing speed
     };
 
-    startTimeout = setTimeout(startTyping, delay);
+    startTimeout = setTimeout(startTyping, replayCount > 0 ? 0 : delay);
 
     return () => {
       clearTimeout(startTimeout);
       clearInterval(typingInterval);
       if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-        audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current.close().catch(() => { });
       }
+      audioCtxRef.current = null;
     };
-  }, [text, delay]);
+  }, [text, delay, replayCount]);
+
+  const handleReplay = () => {
+    if (!replayOnClick) return;
+    setDisplayedText('');
+    setCompleted(false);
+    setReplayCount(c => c + 1);
+  };
 
   return (
-    <span className={`inline-flex items-center ${className || ''}`}>
+    <span
+      className={`inline-flex items-center ${replayOnClick ? 'cursor-pointer' : ''} ${className || ''}`}
+      onClick={handleReplay}
+      title={replayOnClick ? 'Click to replay' : undefined}
+    >
       <span>{displayedText}</span>
-      <span 
-        className={`inline-block w-[0.08em] h-[0.9em] ml-1 bg-current transition-opacity ${completed ? 'animate-hard-blink' : ''}`} 
-        style={{ opacity: (isTyping || completed) ? 1 : 0 }} 
+      <span
+        className={`inline-block w-[0.08em] h-[0.9em] ml-1 bg-current transition-opacity ${completed ? 'animate-hard-blink' : ''}`}
+        style={{ opacity: (isTyping || completed) ? 1 : 0 }}
       />
     </span>
   );

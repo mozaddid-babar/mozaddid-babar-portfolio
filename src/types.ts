@@ -94,6 +94,11 @@ export interface Project {
   technologies: string[];
   githubUrl?: string;
   liveUrl?: string;
+  // Per-link visibility. Links show on the site unless switched off, and in the CV only when switched on.
+  githubShowInFrontend?: boolean;
+  githubShowInCv?: boolean;
+  liveShowInFrontend?: boolean;
+  liveShowInCv?: boolean;
   imageUrl?: string;
   images?: string[];
   featured?: boolean;
@@ -113,6 +118,14 @@ export interface ExperienceRole {
   current?: boolean;
 }
 
+export interface ExperienceAttachment {
+  id: string;
+  label: string;
+  url: string;
+  type: 'pdf' | 'image' | 'link';
+  showInFrontend?: boolean;
+}
+
 export interface Experience {
   id: string;
   role: string;
@@ -126,6 +139,7 @@ export interface Experience {
   skills?: string[];
   current?: boolean;
   roles?: ExperienceRole[];
+  attachments?: ExperienceAttachment[];
   showInFrontend?: boolean;
   showInCv?: boolean;
 }
@@ -204,6 +218,8 @@ export interface Certification {
   issuer: string;
   date: string;
   credentialId?: string;
+  credentialUrl?: string;
+  category?: string;
   description?: string;
   imageUrl?: string;
   showInFrontend?: boolean;

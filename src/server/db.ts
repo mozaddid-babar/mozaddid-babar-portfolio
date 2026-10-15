@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { MongoClient, Db, Collection } from 'mongodb';
 
 // Load environment variables with priority: .env.local overrides .env
@@ -40,14 +41,14 @@ export function reloadEnvironmentVariables(): { username: string; password: stri
 // Initial load on import
 reloadEnvironmentVariables();
 
-import { 
-  PortfolioData, Award, 
-  Publication, 
-  Project, 
-  Experience, 
-  Education, 
-  SkillGroup, 
-  Training, 
+import {
+  PortfolioData, Award,
+  Publication,
+  Project,
+  Experience,
+  Education,
+  SkillGroup,
+  Training,
   Certification,
   Achievement,
   Affiliation,
@@ -59,6 +60,9 @@ import {
   ResearchPillar,
   CvSettings
 } from '../types';
+
+export const REORDERABLE_COLLECTIONS = ['references', 'projects', 'experience', 'education', 'trainings'] as const;
+export type ReorderableCollection = typeof REORDERABLE_COLLECTIONS[number];
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'portfolio_db.json');
@@ -713,7 +717,7 @@ export class PortfolioDatabase {
       if (this.mongoClient) {
         try {
           await this.mongoClient.close();
-        } catch {}
+        } catch { }
       }
 
       this.mongoClient = new MongoClient(uri, {
@@ -776,8 +780,8 @@ export class PortfolioDatabase {
       collection: 'portfolio_data',
       lastSync: this.lastMongoSync,
       error: this.mongoError,
-      mode: this.isConnectedToMongo 
-        ? 'mongodb_atlas' 
+      mode: this.isConnectedToMongo
+        ? 'mongodb_atlas'
         : (uri ? 'connection_error' : 'local_file_cache'),
       stats: {
         publications: this.data.publications?.length || 0,
@@ -832,7 +836,26 @@ export class PortfolioDatabase {
 
   public getPublicData(): Omit<PortfolioData, 'messages' | 'adminConfig'> {
     const { messages, adminConfig, ...publicData } = this.data;
-    return publicData;
+    // Hidden proof documents stay in the admin console only
+    const experience = (publicData.experience || []).map(exp =>
+      exp.attachments
+        ? { ...exp, attachments: exp.attachments.filter(a => a.showInFrontend !== false) }
+        : exp
+    );
+    // Uploaded certificate images are served from their own URL so the page data stays small
+    const certifications = (publicData.certifications || []).map(cert =>
+      cert.imageUrl?.startsWith('data:image/')
+        ? { ...cert, imageUrl: `/api/certifications/${encodeURIComponent(cert.id)}/image?v=${crypto.createHash('sha1').update(cert.imageUrl).digest('hex').slice(0, 10)}` }
+        : cert
+    );
+    return { ...publicData, experience, certifications };
+  }
+
+  public getCertificationImage(id: string): { mimeType: string; buffer: Buffer } | null {
+    const cert = (this.data.certifications || []).find(c => c.id === id);
+    const match = cert?.imageUrl?.match(/^data:(image\/[\w.+-]+);base64,(.*)$/s);
+    if (!match) return null;
+    return { mimeType: match[1], buffer: Buffer.from(match[2], 'base64') };
   }
 
   public updateProfile(updatedProfile: Partial<PortfolioData['profile']>): PortfolioData['profile'] {
@@ -1175,7 +1198,25 @@ export class PortfolioDatabase {
     return this.data.certifications[idx];
   }
 
-  
+
+  // Drag-and-drop ordering for list collections managed in the admin console
+  public reorderCollection(collection: ReorderableCollection, orderedIds: string[]): any[] {
+    const items: any[] = (this.data as any)[collection] || [];
+    const itemMap = new Map(items.map(item => [item.id, item]));
+    const newOrdered: any[] = [];
+    for (const id of orderedIds) {
+      if (itemMap.has(id)) {
+        newOrdered.push(itemMap.get(id));
+        itemMap.delete(id);
+      }
+    }
+    // Add any remaining items that were not in the list at the end
+    newOrdered.push(...Array.from(itemMap.values()));
+    (this.data as any)[collection] = newOrdered;
+    this.sync();
+    return newOrdered;
+  }
+
   public reorderCertifications(orderedIds: string[]): Certification[] {
     if (!this.data.certifications) return [];
     const certMap = new Map(this.data.certifications.map(c => [c.id, c]));
@@ -1268,7 +1309,7 @@ export class PortfolioDatabase {
     return newItem;
   }
 
-    public reorderAchievements(orderedIds: string[]): Achievement[] {
+  public reorderAchievements(orderedIds: string[]): Achievement[] {
     if (!this.data.achievements) return [];
     const itemMap = new Map(this.data.achievements.map(i => [i.id, i]));
     const newOrdered: Achievement[] = [];
@@ -1578,8 +1619,8 @@ export class PortfolioDatabase {
   }
 
   public toggleSectionVisibility(
-    id: string, 
-    field: 'showInFrontend' | 'showInCv' | 'showTitle' | 'showTopText' | 'showDescription', 
+    id: string,
+    field: 'showInFrontend' | 'showInCv' | 'showTitle' | 'showTopText' | 'showDescription',
     value: boolean
   ): SectionConfig | null {
     const sections = this.getSections();

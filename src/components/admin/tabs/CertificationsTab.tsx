@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { VisibilityToggle } from './VisibilityToggle';
-import { ShieldCheck, Plus, Edit3, Trash2, X, ExternalLink, Image as ImageIcon, GripVertical } from 'lucide-react';
+import { ShieldCheck, Plus, Edit3, Trash2, X, ExternalLink, Image as ImageIcon, GripVertical, Upload } from 'lucide-react';
 import { Certification } from '../../../types';
 import { createCertificationAPI, updateCertificationAPI, deleteCertificationAPI, reorderCertificationsAPI } from '../../../api';
 
@@ -10,6 +10,36 @@ interface CertificationsTabProps {
   showToast: (msg: string, type?: 'success' | 'error') => void;
 }
 
+const CATEGORY_OPTIONS = ['Conference', 'Competition', 'Course'];
+const MAX_IMAGE_SIDE = 1600;
+
+// Shrinks an uploaded certificate to a WebP data URL so it stays small in the database
+const compressImage = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read the file'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('This file is not a readable image'));
+      img.onload = () => {
+        const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Image processing is not supported in this browser'));
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/webp', 0.82));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+
+const dataUrlSizeKb = (dataUrl: string) => Math.round((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75 / 1024);
+
 export const CertificationsTab: React.FC<CertificationsTabProps> = ({
   certifications = [],
   onRefresh,
@@ -18,7 +48,7 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState<Omit<Certification, 'id'>>({
     title: '',
     issuer: '',
@@ -26,10 +56,13 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
     credentialId: '',
     description: '',
     imageUrl: '',
+    credentialUrl: '',
+    category: '',
     showInFrontend: true,
     showInCv: true
   });
   const [loading, setLoading] = useState(false);
+  const [isProcessingImage, setIsProcessingImage] = useState(false);
 
   const [localCerts, setLocalCerts] = useState<Certification[]>([]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -49,12 +82,12 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>, index: number) => {
     e.preventDefault();
     if (draggedIndex === null || draggedIndex === index) return;
-    
+
     const newItems = [...localCerts];
     const draggedItem = newItems[draggedIndex];
     newItems.splice(draggedIndex, 1);
     newItems.splice(index, 0, draggedItem);
-    
+
     setLocalCerts(newItems);
     setDraggedIndex(index);
   };
@@ -87,6 +120,8 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
       credentialId: '',
       description: '',
       imageUrl: '',
+      credentialUrl: '',
+      category: '',
       showInFrontend: true,
       showInCv: true
     });
@@ -102,10 +137,31 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
       credentialId: cert.credentialId || '',
       description: cert.description || '',
       imageUrl: cert.imageUrl || '',
+      credentialUrl: cert.credentialUrl || '',
+      category: cert.category || '',
       showInFrontend: cert.showInFrontend ?? true,
       showInCv: cert.showInCv ?? true
     });
     setIsModalOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('Please choose an image file (JPG, PNG or WebP). For a PDF, save it as an image first.', 'error');
+      return;
+    }
+    setIsProcessingImage(true);
+    try {
+      const dataUrl = await compressImage(file);
+      setFormData(prev => ({ ...prev, imageUrl: dataUrl }));
+    } catch (err: any) {
+      showToast(err.message || 'Could not process the image', 'error');
+    } finally {
+      setIsProcessingImage(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -167,41 +223,40 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
           </div>
         ) : (
           localCerts.map((cert, index) => (
-            <div 
-              key={cert.id} 
+            <div
+              key={cert.id}
               draggable
               onDragStart={(e) => handleDragStart(e, index)}
               onDragEnter={(e) => handleDragEnter(e, index)}
               onDragOver={handleDragOver}
               onDragEnd={handleDragEnd}
-              className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl bg-slate-800/90 border transition-all gap-4 ${
-                draggedIndex === index ? 'opacity-50 border-brand-500 scale-[0.98]' : 'border-slate-700 hover:border-slate-600'
-              }`}
+              className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl bg-slate-800/90 border transition-all gap-4 ${draggedIndex === index ? 'opacity-50 border-brand-500 scale-[0.98]' : 'border-slate-700 hover:border-slate-600'
+                }`}
             >
               <div className="flex items-center gap-4 w-full sm:w-auto">
                 <div className="text-slate-500 cursor-grab hover:text-slate-300 active:cursor-grabbing p-1 -ml-2">
                   <GripVertical className="w-5 h-5" />
                 </div>
                 <div className="flex items-start gap-4">
-                {cert.imageUrl ? (
-                  <div className="w-16 h-12 shrink-0 rounded overflow-hidden bg-slate-900">
-                    <img src={cert.imageUrl} alt="thumb" className="w-full h-full object-cover" />
-                  </div>
-                ) : (
-                  <div className="w-16 h-12 shrink-0 rounded bg-slate-700 flex items-center justify-center text-slate-500">
-                    <ImageIcon className="w-5 h-5" />
-                  </div>
-                )}
-                <div>
-                  <h3 className="text-white font-bold">{cert.title}</h3>
-                  <div className="text-sm text-slate-400 mt-0.5">
-                    {cert.issuer} • {cert.date}
-                  </div>
-                  {cert.credentialId && (
-                    <div className="text-xs text-slate-500 font-mono mt-1">ID: {cert.credentialId}</div>
+                  {cert.imageUrl ? (
+                    <div className="w-16 h-12 shrink-0 rounded overflow-hidden bg-slate-900">
+                      <img src={cert.imageUrl} alt="thumb" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-16 h-12 shrink-0 rounded bg-slate-700 flex items-center justify-center text-slate-500">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
                   )}
+                  <div>
+                    <h3 className="text-white font-bold">{cert.title}</h3>
+                    <div className="text-sm text-slate-400 mt-0.5">
+                      {cert.issuer} • {cert.date}
+                    </div>
+                    {cert.credentialId && (
+                      <div className="text-xs text-slate-500 font-mono mt-1">ID: {cert.credentialId}</div>
+                    )}
+                  </div>
                 </div>
-              </div>
 
               </div>
               <div className="flex items-center space-x-2">
@@ -237,7 +292,7 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="p-5 sm:p-6 overflow-y-auto">
               <form id="certForm" onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -245,7 +300,7 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Title *</label>
                     <input
                       type="text" required value={formData.title || ''}
-                      onChange={e => setFormData({...formData, title: e.target.value})}
+                      onChange={e => setFormData({ ...formData, title: e.target.value })}
                       className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
                     />
                   </div>
@@ -253,7 +308,7 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Issuer *</label>
                     <input
                       type="text" required value={formData.issuer || ''}
-                      onChange={e => setFormData({...formData, issuer: e.target.value})}
+                      onChange={e => setFormData({ ...formData, issuer: e.target.value })}
                       className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
                     />
                   </div>
@@ -261,7 +316,7 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Date *</label>
                     <input
                       type="text" required value={formData.date || ''}
-                      onChange={e => setFormData({...formData, date: e.target.value})}
+                      onChange={e => setFormData({ ...formData, date: e.target.value })}
                       placeholder="e.g. Aug 2024"
                       className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
                     />
@@ -270,7 +325,7 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Credential ID</label>
                     <input
                       type="text" value={formData.credentialId || ''}
-                      onChange={e => setFormData({...formData, credentialId: e.target.value})}
+                      onChange={e => setFormData({ ...formData, credentialId: e.target.value })}
                       className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white font-mono"
                     />
                   </div>
@@ -278,32 +333,84 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Description (Optional)</label>
                     <textarea
                       rows={3} value={formData.description || ''}
-                      onChange={e => setFormData({...formData, description: e.target.value})}
+                      onChange={e => setFormData({ ...formData, description: e.target.value })}
                       className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white resize-y"
                     />
                   </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Image URL (Optional)</label>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Category</label>
                     <input
-                      type="url" value={formData.imageUrl || ''}
-                      onChange={e => setFormData({...formData, imageUrl: e.target.value})}
-                      placeholder="https://..."
+                      type="text" list="cert-category-options" value={formData.category || ''}
+                      onChange={e => setFormData({ ...formData, category: e.target.value })}
+                      placeholder="Conference, Competition, Course..."
+                      className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
+                    />
+                    <datalist id="cert-category-options">
+                      {CATEGORY_OPTIONS.map(option => <option key={option} value={option} />)}
+                    </datalist>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Verify Link (Optional)</label>
+                    <input
+                      type="url" value={formData.credentialUrl || ''}
+                      onChange={e => setFormData({ ...formData, credentialUrl: e.target.value })}
+                      placeholder="https://drive.google.com/..."
                       className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
                     />
                   </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Certificate Image</label>
+                    <div className="flex items-start gap-3">
+                      <div className="w-24 h-[68px] shrink-0 rounded-lg border border-slate-700 bg-slate-900 overflow-hidden flex items-center justify-center">
+                        {formData.imageUrl ? (
+                          <img src={formData.imageUrl} alt="Certificate preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <ImageIcon className="w-5 h-5 text-slate-600" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0 space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-brand-600 hover:bg-brand-500 text-white cursor-pointer ${isProcessingImage ? 'opacity-60 pointer-events-none' : ''}`}>
+                            <Upload className="w-3.5 h-3.5" />
+                            {isProcessingImage ? 'Processing...' : formData.imageUrl ? 'Replace image' : 'Upload image'}
+                            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                          </label>
+                          {formData.imageUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, imageUrl: '' })}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-red-400 border border-slate-700"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        {formData.imageUrl?.startsWith('data:') ? (
+                          <p className="text-[11px] text-slate-400">Uploaded image, {dataUrlSizeKb(formData.imageUrl)} KB. Stored with your site data.</p>
+                        ) : (
+                          <input
+                            type="url" value={formData.imageUrl || ''}
+                            onChange={e => setFormData({ ...formData, imageUrl: e.target.value })}
+                            placeholder="or paste an image link: https://..."
+                            className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <VisibilityToggle 
-                  showInFrontend={formData.showInFrontend ?? true} 
-                  showInCv={formData.showInCv ?? true} 
-                  onChange={(field, val) => setFormData({ ...formData, [field]: val })} 
+                <VisibilityToggle
+                  showInFrontend={formData.showInFrontend ?? true}
+                  showInCv={formData.showInCv ?? true}
+                  onChange={(field, val) => setFormData({ ...formData, [field]: val })}
                 />
               </form>
             </div>
 
             <div className="p-5 sm:p-6 border-t border-slate-700 flex justify-end space-x-3">
               <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white">Cancel</button>
-              <button type="submit" form="certForm" disabled={loading} className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold rounded-xl">
+              <button type="submit" form="certForm" disabled={loading || isProcessingImage} className="px-5 py-2 bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold rounded-xl">
                 {loading ? 'Saving...' : 'Save Certification'}
               </button>
             </div>

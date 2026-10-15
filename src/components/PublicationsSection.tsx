@@ -26,6 +26,7 @@ import { syncCitationsForPublications } from '../utils/citationSync';
 interface PublicationsSectionProps {
   publications: Publication[];
   scholarUrl?: string;
+  ownerName?: string;
   isAlt?: boolean;
   sectionConfig?: SectionConfig;
   citationCounts?: Record<string, number>;
@@ -35,6 +36,7 @@ interface PublicationsSectionProps {
 export const PublicationsSection: React.FC<PublicationsSectionProps> = ({
   publications,
   scholarUrl,
+  ownerName,
   isAlt = false,
   sectionConfig,
   citationCounts: propCitationCounts,
@@ -204,6 +206,22 @@ export const PublicationsSection: React.FC<PublicationsSectionProps> = ({
     setExpanded(!expanded);
   };
 
+  // Bold the site owner's name in author lists (matched by surname, e.g. MUH Babar)
+  const ownerSurname = (ownerName || '').trim().split(/\s+/).pop()?.toLowerCase() || '';
+  const renderAuthors = (authors: string) => {
+    if (!ownerSurname) return authors;
+    return authors.split(',').map((part, i) => (
+      <React.Fragment key={i}>
+        {i > 0 && ','}
+        {part.toLowerCase().split(/[\s.]+/).includes(ownerSurname) ? (
+          <strong className="font-semibold text-slate-900 dark:text-white">{part}</strong>
+        ) : (
+          part
+        )}
+      </React.Fragment>
+    ));
+  };
+
   const renderPublicationCard = (pub: Publication, idx: number) => {
     const displayCitations = citationCounts[pub.id] !== undefined ? citationCounts[pub.id] : pub.citations;
     const isLatestYear = pub.year === maxYear;
@@ -278,7 +296,7 @@ export const PublicationsSection: React.FC<PublicationsSectionProps> = ({
           <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
             <p className="font-light">
               <span className="text-slate-500 dark:text-slate-400 font-mono font-medium">Authors: </span>
-              {pub.authors}
+              {renderAuthors(pub.authors)}
             </p>
             <p className="font-sans italic text-indigo-700 dark:text-indigo-300 font-medium flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 shrink-0" />

@@ -4,15 +4,15 @@ import fs from 'fs';
 import crypto from 'crypto';
 import * as cheerio from 'cheerio';
 import { createServer as createViteServer } from 'vite';
-import { db, reloadEnvironmentVariables } from './src/server/db.ts';
+import { db, reloadEnvironmentVariables, REORDERABLE_COLLECTIONS, ReorderableCollection } from './src/server/db.ts';
 
 // Load environment variables (.env.local overrides .env)
 reloadEnvironmentVariables();
-import { 
-  parseBibTeX, 
-  scrapeGoogleScholar, 
-  fetchSemanticScholarPapers, 
-  fetchByDOI 
+import {
+  parseBibTeX,
+  scrapeGoogleScholar,
+  fetchSemanticScholarPapers,
+  fetchByDOI
 } from './src/server/academicImporter.ts';
 
 // In-memory token store for sessions
@@ -60,11 +60,11 @@ async function startServer() {
   // --- Public APIs ---
   app.get('/api/health', (req: Request, res: Response) => {
     const dbStatus = db.getDatabaseStatus();
-    res.json({ 
-      status: 'ok', 
-      dbMode: dbStatus.mode, 
+    res.json({
+      status: 'ok',
+      dbMode: dbStatus.mode,
       connectedToCloudDb: dbStatus.connected,
-      timestamp: new Date().toISOString() 
+      timestamp: new Date().toISOString()
     });
   });
 
@@ -181,29 +181,29 @@ async function startServer() {
       }
 
       // We'll use cheerio to scrape the public Google Scholar profile
-      
+
       const response = await fetch(scholarUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
           'Accept-Language': 'en-US,en;q=0.9',
         }
       });
-      
+
       if (!response.ok) {
         throw new Error(`Scholar responded with status: ${response.status}`);
       }
-      
+
       const html = await response.text();
       const $ = cheerio.load(html);
-      
+
       const citationsMap: Record<string, number> = {};
-      
+
       // Parse the table rows containing papers
       $('.gsc_a_tr').each((i: number, el: any) => {
         const title = $(el).find('.gsc_a_at').text().trim();
         const citationText = $(el).find('.gsc_a_ac').text().trim();
         const citationCount = parseInt(citationText, 10);
-        
+
         if (title && !isNaN(citationCount)) {
           citationsMap[title.toLowerCase()] = citationCount;
         }
@@ -213,10 +213,10 @@ async function startServer() {
     } catch (err: any) {
       console.error("Scholar sync error:", err.message);
       // Fallback response so frontend doesn't crash, since Google often returns 429
-      res.status(500).json({ 
-        success: false, 
-        message: 'Could not reach Google Scholar directly. It may be temporarily blocking automated requests.', 
-        error: err.message 
+      res.status(500).json({
+        success: false,
+        message: 'Could not reach Google Scholar directly. It may be temporarily blocking automated requests.',
+        error: err.message
       });
     }
   });
@@ -250,6 +250,20 @@ async function startServer() {
       }
       const updated = db.updateCvSettings(cvSettings);
       res.json({ success: true, data: updated, message: 'CV settings updated successfully.' });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
+  // Public certificate image (uploaded images are stored in the database)
+  app.get('/api/certifications/:id/image', (req: Request, res: Response) => {
+    try {
+      const image = db.getCertificationImage(req.params.id);
+      if (!image) return res.status(404).json({ success: false, message: 'Image not found.' });
+      res.setHeader('Content-Type', image.mimeType);
+      // The URL carries a version hash, so browsers can keep it for a long time
+      res.setHeader('Cache-Control', req.query.v ? 'public, max-age=31536000, immutable' : 'public, max-age=300');
+      res.send(image.buffer);
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });
     }
@@ -617,6 +631,23 @@ async function startServer() {
   });
 
 
+  app.put('/api/admin/reorder/:collection', verifyAuth, (req: Request, res: Response) => {
+    try {
+      const collection = req.params.collection as ReorderableCollection;
+      if (!(REORDERABLE_COLLECTIONS as readonly string[]).includes(collection)) {
+        return res.status(400).json({ success: false, message: 'This list cannot be reordered.' });
+      }
+      const { orderedIds } = req.body;
+      if (!Array.isArray(orderedIds)) {
+        return res.status(400).json({ success: false, message: 'orderedIds must be an array of strings' });
+      }
+      const updated = db.reorderCollection(collection, orderedIds);
+      res.json({ success: true, data: updated });
+    } catch (err: any) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  });
+
   app.put('/api/admin/certifications/reorder', verifyAuth, (req: Request, res: Response) => {
     try {
       const { orderedIds } = req.body;
@@ -709,7 +740,7 @@ async function startServer() {
     }
   });
 
-    app.put('/api/admin/achievements/reorder', verifyAuth, (req: Request, res: Response) => {
+  app.put('/api/admin/achievements/reorder', verifyAuth, (req: Request, res: Response) => {
     try {
       const { orderedIds } = req.body;
       if (!Array.isArray(orderedIds)) {
@@ -1006,9 +1037,9 @@ async function startServer() {
       const { field, value } = req.body;
       const allowedFields = ['showInFrontend', 'showInCv', 'showTitle', 'showTopText', 'showDescription'];
       if (!allowedFields.includes(field)) {
-        return res.status(400).json({ 
-          success: false, 
-          message: `Invalid field specified. Must be one of: ${allowedFields.join(', ')}` 
+        return res.status(400).json({
+          success: false,
+          message: `Invalid field specified. Must be one of: ${allowedFields.join(', ')}`
         });
       }
       const updated = db.toggleSectionVisibility(id, field, Boolean(value));
@@ -1072,8 +1103,8 @@ async function startServer() {
         message: connected
           ? 'Successfully connected and synchronized with MongoDB Atlas cluster!'
           : (status.hasUri
-              ? `Connection failed: ${status.error || 'Please verify cluster credentials, database user, and IP Access List (0.0.0.0/0).'}`
-              : 'No MONGODB_URI found. Add MONGODB_URI in your environment or .env.local file.')
+            ? `Connection failed: ${status.error || 'Please verify cluster credentials, database user, and IP Access List (0.0.0.0/0).'}`
+            : 'No MONGODB_URI found. Add MONGODB_URI in your environment or .env.local file.')
       });
     } catch (err: any) {
       res.status(500).json({ success: false, message: err.message });

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Download, Mail, Github, Linkedin, GraduationCap, BookOpen, Code, Code2, Twitter, Globe, Facebook, Instagram, FileText, FlaskConical } from 'lucide-react';
 import { Profile } from '../types';
+import { TypewriterText } from './TypewriterText';
 
 interface HeroProps {
   profile: Profile;
@@ -11,7 +12,6 @@ interface HeroProps {
   isDownloadingCv?: boolean;
 }
 
-import { TypewriterText } from './TypewriterText';
 
 
 const getBrandStyle = (platform: string) => {
@@ -28,12 +28,12 @@ const getBrandStyle = (platform: string) => {
   return { bg: '#0B59B6', color: '#fff' };
 };
 
-export const Hero: React.FC<HeroProps> = ({ 
-  profile, 
-  isAlt = false, 
-  onViewCv, 
-  onDownloadCv, 
-  isDownloadingCv = false 
+export const Hero: React.FC<HeroProps> = ({
+  profile,
+  isAlt = false,
+  onViewCv,
+  onDownloadCv,
+  isDownloadingCv = false
 }) => {
   const [hoveredSocialId, setHoveredSocialId] = useState<string | null>(null);
   return (
@@ -43,17 +43,14 @@ export const Hero: React.FC<HeroProps> = ({
         {/* Left Column: Fascinating Gradient Avatar & Action Buttons */}
         <div className="lg:col-span-4 relative w-full flex flex-col items-center justify-center lg:items-start lg:justify-start order-1 lg:order-1 gap-5">
           <div className="relative group w-60 h-60 sm:w-68 sm:h-68 md:w-76 md:h-76 lg:w-[290px] lg:h-[290px] shrink-0 flex items-center justify-center z-20">
-            {/* Ambient Multi-Hue Glow Behind Avatar */}
-            <div className="absolute -inset-2 rounded-full bg-gradient-to-tr from-brand-600 via-sky-400 to-indigo-600 opacity-40 dark:opacity-50 blur-2xl group-hover:opacity-75 transition-opacity duration-700 animate-pulse pointer-events-none" />
-
-            {/* Glowing Gradient Ring Border */}
-            <div className="relative w-full h-full rounded-full p-[5px] bg-gradient-to-tr from-brand-600 via-cyan-400 via-sky-500 to-indigo-600 shadow-[0_0_50px_rgba(2,111,195,0.35)] transition-all duration-500 group-hover:shadow-[0_0_65px_rgba(2,111,195,0.55)]">
+            {/* Thin Neutral Ring Border */}
+            <div className="relative w-full h-full rounded-full p-[3px] bg-slate-200 dark:bg-slate-700 shadow-lg shadow-slate-900/10">
               {/* Inner Separation Ring */}
               <div className="w-full h-full rounded-full p-1 bg-white dark:bg-slate-900 overflow-hidden">
                 <motion.img
                   src={profile.avatarUrl || "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?q=80&w=600&auto=format&fit=crop"}
                   alt={profile.name}
-                  className="relative z-10 w-full h-full object-cover rounded-full transition-transform duration-700 ease-out group-hover:scale-105"
+                  className="relative z-10 w-full h-full object-cover rounded-full"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.8, delay: 0.2, ease: [0.34, 1.56, 0.64, 1] }}
@@ -131,19 +128,42 @@ export const Hero: React.FC<HeroProps> = ({
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-600 dark:bg-brand-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-brand-600 dark:bg-brand-400" />
               <span className="uppercase">{profile.title}</span>
             </motion.div>
 
             {/* Middle: Name (Capitalized on 1 Single Line) */}
             <motion.h1
-              className="text-xl sm:text-2xl md:text-3xl lg:text-[32px] xl:text-[38px] font-sans font-bold uppercase tracking-normal text-slate-900 dark:text-white leading-tight sm:whitespace-nowrap"
+              className="text-[26px] sm:text-4xl lg:text-[44px] font-serif font-semibold tracking-tight text-slate-900 dark:text-white leading-tight"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
+              aria-label={profile.name}
             >
-              <TypewriterText text={profile.name} delay={500} />
+              {/* The invisible copy reserves the full width so the layout doesn't shift while typing */}
+              <span className="relative inline-block whitespace-nowrap" aria-hidden="true">
+                <span className="invisible">{profile.name}</span>
+                <TypewriterText text={profile.name} delay={500} className="absolute inset-0 !items-start whitespace-nowrap" />
+              </span>
             </motion.h1>
+
+            {profile.headline && (
+              <p className="text-sm sm:text-base font-medium text-slate-600 dark:text-slate-300">
+                {profile.headline}
+              </p>
+            )}
+
+            {(profile.affiliation || profile.statusTag) && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 pt-1 text-sm text-slate-600 dark:text-slate-400">
+                {profile.statusTag && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-medium">
+                    <GraduationCap className="w-4 h-4" />
+                    {profile.statusTag}
+                  </span>
+                )}
+                {profile.affiliation && <span>Currently at {profile.affiliation}</span>}
+              </div>
+            )}
           </div>
 
           {/* Roles & Bio Description */}
@@ -153,13 +173,7 @@ export const Hero: React.FC<HeroProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           >
-            {profile.aboutText && profile.aboutText.length > 0 ? (
-              profile.aboutText.slice(0, 3).map((paragraph, idx) => (
-                <p key={idx}>{paragraph}</p>
-              ))
-            ) : (
-              <p>{profile.bio}</p>
-            )}
+            <p>{profile.bio || (profile.aboutText && profile.aboutText[0])}</p>
           </motion.div>
 
           {/* Bottom: Social Links */}
@@ -169,7 +183,7 @@ export const Hero: React.FC<HeroProps> = ({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
           >
-            <div 
+            <div
               className="flex flex-wrap items-center gap-2"
               onMouseLeave={() => setHoveredSocialId(null)}
             >
@@ -195,11 +209,10 @@ export const Hero: React.FC<HeroProps> = ({
                     href={social.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`group/btn relative shrink-0 flex items-center h-[42px] rounded-[10px] border transition-all duration-300 ease-out overflow-hidden ${
-                      isHovered
+                    className={`group/btn relative shrink-0 flex items-center h-[42px] rounded-[10px] border transition-all duration-300 ease-out overflow-hidden ${isHovered
                         ? 'border-transparent shadow-[0_4px_16px_rgba(0,0,0,0.15)]'
                         : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 hover:border-transparent hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]'
-                    }`}
+                      }`}
                     style={{
                       background: isHovered ? brand.bg : undefined,
                       borderColor: isHovered ? 'transparent' : undefined,
@@ -208,18 +221,17 @@ export const Hero: React.FC<HeroProps> = ({
                     } as React.CSSProperties}
                     onMouseEnter={() => setHoveredSocialId(social.id)}
                   >
-                    <div 
+                    <div
                       className="w-[42px] h-[42px] flex items-center justify-center shrink-0 z-10 transition-colors duration-300"
                       style={{ color: isHovered ? brand.color : undefined }}
                     >
                       <Icon className="w-5 h-5 text-slate-500 group-hover/btn:!text-[var(--hover-color)] transition-colors duration-300" />
                     </div>
-                    <div 
-                      className={`overflow-hidden transition-all duration-300 ease-out flex items-center ${
-                        isHovered ? 'max-w-[220px] opacity-100' : 'max-w-0 opacity-0 group-hover/btn:max-w-[220px] group-hover/btn:opacity-100'
-                      }`}
+                    <div
+                      className={`overflow-hidden transition-all duration-300 ease-out flex items-center ${isHovered ? 'max-w-[220px] opacity-100' : 'max-w-0 opacity-0 group-hover/btn:max-w-[220px] group-hover/btn:opacity-100'
+                        }`}
                     >
-                      <span 
+                      <span
                         className="whitespace-nowrap text-[14px] font-semibold pr-4"
                         style={{ color: brand.color }}
                       >

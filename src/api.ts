@@ -330,6 +330,19 @@ export async function createCertificationAPI(cert: Omit<Certification, 'id'>): P
 }
 
 
+// Saves a drag-and-drop order for references, projects, experience, education or trainings
+export async function reorderItemsAPI(
+  collection: 'references' | 'projects' | 'experience' | 'education' | 'trainings',
+  orderedIds: string[]
+): Promise<void> {
+  const res = await authFetch(`${API_BASE}/admin/reorder/${collection}`, {
+    method: 'PUT',
+    body: JSON.stringify({ orderedIds })
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.message || 'Failed to save the new order');
+}
+
 export async function reorderCertificationsAPI(orderedIds: string[]): Promise<Certification[]> {
   const res = await authFetch(`${API_BASE}/admin/certifications/reorder`, {
     method: 'PUT',

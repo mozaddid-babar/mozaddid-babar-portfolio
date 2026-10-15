@@ -424,7 +424,10 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
   };
 
   // Calculate research impact metrics from active publications
-  const allCvPubs = (data.publications || []).filter(p => p.showInCv !== false);
+  // Most cited first within each group (journal, conference, other); ties go to the newer paper
+  const allCvPubs = (data.publications || [])
+    .filter(p => p.showInCv !== false)
+    .sort((a, b) => ((b.citations || 0) - (a.citations || 0)) || ((b.year || 0) - (a.year || 0)));
   const journalPubs = allCvPubs.filter(p => p.category === 'Journal');
   const conferencePubs = allCvPubs.filter(p => p.category === 'Conference');
   const preprintPubs = allCvPubs.filter(p => p.category !== 'Journal' && p.category !== 'Conference');
@@ -477,75 +480,41 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
     seenTypes.add('phone');
   }
 
-  // 2. Academic Profiles & Social Handles
+  // 2. Academic Profiles & Social Handles: shown as short clickable names in one row
+  const profileLinks: { label: string; href: string }[] = [];
+  const profileLabel = (platform: string) => {
+    const pLower = platform.toLowerCase().trim();
+    if (pLower.includes('website') || pLower.includes('profile link') || pLower.includes('portfolio')) return 'Portfolio';
+    if (pLower.includes('scholar')) return 'Google Scholar';
+    if (pLower.includes('orcid')) return 'ORCID';
+    if (pLower.includes('linkedin')) return 'LinkedIn';
+    if (pLower.includes('github')) return 'GitHub';
+    if (pLower.includes('researchgate')) return 'ResearchGate';
+    return platform.trim();
+  };
+  const addProfileLink = (label: string, url: string) => {
+    const href = label === 'ORCID' && !url.startsWith('http') ? `https://orcid.org/${url}` : url;
+    if (!profileLinks.some(l => l.label === label)) profileLinks.push({ label, href });
+  };
+
   if (profile.socialLinks && profile.socialLinks.length > 0) {
     profile.socialLinks.forEach(item => {
       if (!item.url || !item.url.trim() || item.showInCv === false) {
         return;
       }
-
-      const pLower = item.platform.toLowerCase().trim();
-      let label = item.platform;
-      let displayNode: React.ReactNode;
-
-      if (pLower.includes('website') || pLower.includes('profile link') || pLower.includes('portfolio')) {
-        label = 'Profile link';
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">{item.url}</a>;
-      } else if (pLower.includes('scholar')) {
-        label = 'Google Scholar';
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">Scholar Profile</a>;
-      } else if (pLower.includes('orcid')) {
-        label = 'ORCID';
-        const orcidHref = item.url.startsWith('http') ? item.url : `https://orcid.org/${item.url}`;
-        displayNode = <a href={orcidHref} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">{item.url.replace(/^https?:\/\/orcid\.org\//, '')}</a>;
-      } else if (pLower.includes('linkedin')) {
-        label = 'LinkedIn';
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">LinkedIn Profile</a>;
-      } else if (pLower.includes('github')) {
-        label = 'GitHub';
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">GitHub Profile</a>;
-      } else if (pLower.includes('researchgate')) {
-        label = 'ResearchGate';
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">ResearchGate Profile</a>;
-      } else {
-        label = item.platform;
-        displayNode = <a href={item.url} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">{item.url.replace(/^https?:\/\/(www\.)?/, '')}</a>;
-      }
-
-      contactLinks.push({
-        label,
-        value: displayNode
-      });
+      addProfileLink(profileLabel(item.platform), item.url.trim());
     });
   }
 
-  // 3. Fallback contact accounts
+  // 3. Fallback contact accounts (only for platforms with no entry in Social Handles,
+  // so an entry switched off for the CV stays hidden)
+  const listedPlatforms = (profile.socialLinks || []).map(item => item.platform.toLowerCase());
+  const isListed = (key: string) => listedPlatforms.some(p => p.includes(key));
   if (profile.social) {
-    if (profile.social.linkedin && !contactLinks.some(l => l.label === 'LinkedIn')) {
-      contactLinks.push({
-        label: 'LinkedIn',
-        value: <a href={profile.social.linkedin} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">LinkedIn Profile</a>
-      });
-    }
-    if (profile.social.github && !contactLinks.some(l => l.label === 'GitHub')) {
-      contactLinks.push({
-        label: 'GitHub',
-        value: <a href={profile.social.github} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">GitHub Profile</a>
-      });
-    }
-    if (profile.social.scholar && !contactLinks.some(l => l.label === 'Google Scholar')) {
-      contactLinks.push({
-        label: 'Google Scholar',
-        value: <a href={profile.social.scholar} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">Scholar Profile</a>
-      });
-    }
-    if (profile.social.orcid && !contactLinks.some(l => l.label === 'ORCID')) {
-      const orcidHref = profile.social.orcid.startsWith('http') ? profile.social.orcid : `https://orcid.org/${profile.social.orcid}`;
-      contactLinks.push({
-        label: 'ORCID',
-        value: <a href={orcidHref} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">{profile.social.orcid.replace(/^https?:\/\/orcid\.org\//, '')}</a>
-      });
-    }
+    if (profile.social.linkedin && !isListed('linkedin')) addProfileLink('LinkedIn', profile.social.linkedin);
+    if (profile.social.github && !isListed('github')) addProfileLink('GitHub', profile.social.github);
+    if (profile.social.scholar && !isListed('scholar')) addProfileLink('Google Scholar', profile.social.scholar);
+    if (profile.social.orcid && !isListed('orcid')) addProfileLink('ORCID', profile.social.orcid);
   }
 
   // 4. Custom Contact Channels
@@ -615,6 +584,16 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
               </div>
             ))}
           </div>
+          {profileLinks.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap items-baseline text-left">
+              {profileLinks.map((link, idx) => (
+                <React.Fragment key={link.label}>
+                  {idx > 0 && <span className="mx-2 text-[#64748b]">•</span>}
+                  <a href={link.href} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline whitespace-nowrap">{link.label}</a>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
           {addressText && (
             <div className="mt-1.5 pt-1.5 border-t border-[#e2e8f0] text-left flex items-baseline gap-1.5">
               <span className="font-bold text-black whitespace-nowrap">Address:</span>
@@ -751,7 +730,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                       <div key={edu.id} className="cv-item-block">
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline font-bold text-black">
                           <span>{edu.institution}{edu.location ? `, ${edu.location}` : ''}</span>
-                          <span className="font-normal text-[13.5px]">{edu.year}</span>
+                          <span className="font-normal text-[13.5px] sm:ml-4 shrink-0 whitespace-nowrap">{edu.year}</span>
                         </div>
                         <div className="font-bold text-black">
                           {edu.degree}{edu.department ? ` in ${edu.department}` : ''}
@@ -794,7 +773,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                           <div key={edu.id} className="cv-item-block">
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline font-bold text-black">
                               <span>{edu.institution}{edu.location ? `, ${edu.location}` : ''}</span>
-                              <span className="font-normal text-[13.5px]">{edu.year}</span>
+                              <span className="font-normal text-[13.5px] sm:ml-4 shrink-0 whitespace-nowrap">{edu.year}</span>
                             </div>
                             <div className="font-bold text-black">
                               {edu.degree}{edu.department ? ` in ${edu.department}` : ''}
@@ -818,7 +797,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                           <div key={exp.id} className="cv-item-block">
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline font-bold text-black">
                               <span>{exp.role}</span>
-                              <span className="font-normal text-[13.5px]">{exp.period}</span>
+                              <span className="font-normal text-[13.5px] sm:ml-4 shrink-0 whitespace-nowrap">{exp.period}</span>
                             </div>
                             <div className="text-black">
                               {exp.organization}{exp.department ? `, ${exp.department}` : ''}{exp.location ? `, ${exp.location}` : ''}
@@ -860,8 +839,28 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                     {projs.map(p => (
                       <div key={p.id} className="cv-item-block">
                         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline font-bold text-black">
-                          <span>{p.title}</span>
-                          {p.date && <span className="font-normal text-[13.5px]">{p.date}</span>}
+                          <span>
+                            {p.title}
+                            {(() => {
+                              // Project links appear in the CV only when switched on in Admin → Projects
+                              const links = [
+                                p.githubUrl && p.githubShowInCv ? { label: 'GitHub', href: p.githubUrl } : null,
+                                p.liveUrl && p.liveShowInCv ? { label: 'Live Demo', href: p.liveUrl } : null
+                              ].filter(Boolean) as { label: string; href: string }[];
+                              if (links.length === 0) return null;
+                              return (
+                                <span className="font-normal text-[13px] ml-2">
+                                  {links.map((link, idx) => (
+                                    <React.Fragment key={link.label}>
+                                      {idx > 0 && <span className="mx-1.5 text-[#64748b]">•</span>}
+                                      <a href={link.href} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline whitespace-nowrap">{link.label}</a>
+                                    </React.Fragment>
+                                  ))}
+                                </span>
+                              );
+                            })()}
+                          </span>
+                          {p.date &&<span className="font-normal text-[13.5px] sm:ml-4 shrink-0 whitespace-nowrap">{p.date}</span>}
                         </div>
                         <p className="mt-0.5 leading-[1.6] text-left">
                           {p.description}
@@ -913,7 +912,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                       <div key={a.id} className="cv-item-block">
                         <div className="flex justify-between items-baseline">
                           <span><span className="font-bold">{a.title}</span>{a.issuer ? `, ${a.issuer}` : ''}</span>
-                          {a.date && <span className="text-[13.5px] ml-4">{a.date}</span>}
+                          {a.date && <span className="text-[13.5px] ml-4 shrink-0 whitespace-nowrap">{a.date}</span>}
                         </div>
                         {a.description && <p className="mt-0.5 leading-[1.5] text-[#1e293b] text-left">{a.description}</p>}
                       </div>
@@ -935,7 +934,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                       <div key={a.id} className="cv-item-block">
                         <div className="flex justify-between items-baseline">
                           <span><span className="font-bold">{a.title}</span>{a.organization ? `, ${a.organization}` : ''}</span>
-                          <span className="text-[13.5px] ml-4">{a.year || a.date}</span>
+                          <span className="text-[13.5px] ml-4 shrink-0 whitespace-nowrap">{a.year || a.date}</span>
                         </div>
                         {a.description && <p className="mt-0.5 leading-[1.5] text-[#1e293b] text-left">{a.description}</p>}
                       </div>
@@ -956,7 +955,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                     {certs.map(c => (
                       <div key={c.id} className="cv-item-block flex justify-between items-baseline">
                         <span><strong className="text-black">{c.title}</strong> — {c.issuer}</span>
-                        <span className="text-[13.5px] ml-4">{c.date}</span>
+                        <span className="text-[13.5px] ml-4 shrink-0 whitespace-nowrap">{c.date}</span>
                       </div>
                     ))}
                   </div>
@@ -975,7 +974,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                     {trs.map(t => (
                       <div key={t.id} className="cv-item-block flex justify-between items-baseline">
                         <span><strong className="text-black">{t.title}</strong> — {t.issuer}</span>
-                        <span className="text-[13.5px] ml-4">{t.year}</span>
+                        <span className="text-[13.5px] ml-4 shrink-0 whitespace-nowrap">{t.year}</span>
                       </div>
                     ))}
                   </div>
@@ -994,7 +993,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                     {affs.map(a => (
                       <div key={a.id} className="cv-item-block flex justify-between items-baseline">
                         <span><strong className="text-black">{a.role}</strong> — {a.organization}</span>
-                        <span className="text-[13.5px] ml-4">{a.period}</span>
+                        <span className="text-[13.5px] ml-4 shrink-0 whitespace-nowrap">{a.period}</span>
                       </div>
                     ))}
                   </div>
@@ -1013,7 +1012,7 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                     {vols.map(v => (
                       <div key={v.id} className="cv-item-block flex justify-between items-baseline">
                         <span><strong className="text-black">{v.role || v.title}</strong>{v.organization ? ` — ${v.organization}` : ''}</span>
-                        <span className="text-[13.5px] ml-4">{v.period}</span>
+                        <span className="text-[13.5px] ml-4 shrink-0 whitespace-nowrap">{v.period}</span>
                       </div>
                     ))}
                   </div>

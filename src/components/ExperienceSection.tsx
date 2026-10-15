@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ScrollReveal } from './ScrollReveal';
 import {
   Briefcase,
@@ -10,9 +11,15 @@ import {
   BookOpen,
   Columns2,
   ChevronLeft,
-  PanelRightClose
+  PanelRightClose,
+  FileText,
+  Image as ImageIcon,
+  Link2,
+  ExternalLink,
+  ShieldCheck,
+  X
 } from 'lucide-react';
-import { Experience, Education, SectionConfig } from '../types';
+import { Experience, Education, ExperienceAttachment, SectionConfig } from '../types';
 import { SectionHeader } from './SectionHeader';
 
 const parseDateForSort = (dateStr: string): number => {
@@ -27,6 +34,78 @@ const getRoleEndDate = (period: string): number => {
   const parts = period.split('-');
   const endStr = parts.length > 1 ? parts[1].trim() : parts[0].trim();
   return parseDateForSort(endStr);
+};
+
+// Google Drive share links need their embeddable form to preview inside the page
+const getDriveFileId = (url: string): string | null => {
+  const m = url.match(/drive\.google\.com\/file\/d\/([^/?#]+)/) || url.match(/[?&]id=([^&#]+)/);
+  return m ? m[1] : null;
+};
+
+const getPreviewSrc = (att: ExperienceAttachment): string => {
+  const driveId = getDriveFileId(att.url);
+  if (att.type === 'image') {
+    return driveId ? `https://drive.google.com/thumbnail?id=${driveId}&sz=w1600` : att.url;
+  }
+  return driveId ? `https://drive.google.com/file/d/${driveId}/preview` : att.url;
+};
+
+const ATTACHMENT_ICONS = { pdf: FileText, image: ImageIcon, link: Link2 };
+
+const DocumentViewer: React.FC<{
+  attachment: ExperienceAttachment;
+  context: string;
+  onClose: () => void;
+}> = ({ attachment, context, onClose }) => {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="relative w-full max-w-4xl h-[85vh] flex flex-col rounded-2xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label={attachment.label}
+      >
+        <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">{attachment.label}</div>
+            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{context}</div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <a
+              href={attachment.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+            >
+              Open in new tab <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 bg-slate-100 dark:bg-slate-950">
+          {attachment.type === 'image' ? (
+            <img src={getPreviewSrc(attachment)} alt={attachment.label} className="w-full h-full object-contain" />
+          ) : (
+            <iframe src={getPreviewSrc(attachment)} title={attachment.label} className="w-full h-full border-0" allow="autoplay" />
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 };
 
 interface ExperienceSectionProps {
@@ -44,6 +123,9 @@ export const ExperienceSection: React.FC<ExperienceSectionProps> = ({
 }) => {
   // Page Layout State: false = Split View (side-by-side), true = Full Width Experience (Education hidden)
   const [hideEducation, setHideEducation] = useState(false);
+
+  // Proof document currently open in the viewer
+  const [openDoc, setOpenDoc] = useState<{ attachment: ExperienceAttachment; context: string } | null>(null);
 
   // Show More / Collapse State for experiences (not more than 2 initially)
   const [expanded, setExpanded] = useState(false);
@@ -208,6 +290,37 @@ export const ExperienceSection: React.FC<ExperienceSectionProps> = ({
             </div>
           </div>
         )}
+
+        {/* Proof documents */}
+        {(() => {
+          const docs = (exp.attachments || []).filter(a => a.showInFrontend !== false && a.url);
+          if (docs.length === 0) return null;
+          return (
+            <div className="pt-3 mt-1 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-widest text-emerald-700 dark:text-emerald-400 mr-1">
+                <ShieldCheck className="w-3.5 h-3.5" /> Proof
+              </span>
+              {docs.map(doc => {
+                const Icon = ATTACHMENT_ICONS[doc.type] || FileText;
+                const chipClass = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors";
+                return doc.type === 'link' ? (
+                  <a key={doc.id} href={doc.url} target="_blank" rel="noopener noreferrer" className={chipClass}>
+                    <Icon className="w-3.5 h-3.5" /> {doc.label} <ExternalLink className="w-3 h-3 opacity-60" />
+                  </a>
+                ) : (
+                  <button
+                    key={doc.id}
+                    type="button"
+                    onClick={() => setOpenDoc({ attachment: doc, context: `${exp.role} · ${exp.organization}` })}
+                    className={chipClass}
+                  >
+                    <Icon className="w-3.5 h-3.5" /> {doc.label}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
     </ScrollReveal>
   );
@@ -236,11 +349,10 @@ export const ExperienceSection: React.FC<ExperienceSectionProps> = ({
           {/* Just this icon for splitting as requested */}
           <button
             onClick={() => setHideEducation(!hideEducation)}
-            className={`p-2 rounded-xl border transition-all duration-200 cursor-pointer shadow-xs ${
-              !hideEducation
+            className={`p-2 rounded-xl border transition-all duration-200 cursor-pointer shadow-xs ${!hideEducation
                 ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700/80 hover:bg-amber-500/20'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-slate-900 dark:hover:text-white hover:border-slate-300 dark:hover:border-slate-600'
-            }`}
+              }`}
             title={hideEducation ? "Split View (Show Education)" : "Full Experience (Hide Education)"}
             aria-label="Toggle split view"
             id="exp-layout-split-btn"
@@ -324,19 +436,17 @@ export const ExperienceSection: React.FC<ExperienceSectionProps> = ({
           {/* Continuously animates width so Experience expands to the right in real-time */}
           {/* ========================================================================= */}
           <div
-            className={`shrink-0 overflow-hidden lg:sticky lg:top-24 self-start transition-[width] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              hideEducation
+            className={`shrink-0 overflow-hidden lg:sticky lg:top-24 self-start transition-[width] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${hideEducation
                 ? 'hidden lg:block lg:w-[60px]'
                 : 'w-full lg:w-[410px] xl:w-[440px]'
-            }`}
+              }`}
           >
             {/* Expanded Academic Education View */}
             <div
-              className={`w-full lg:w-[410px] xl:w-[440px] space-y-6 transition-all duration-400 ease-out ${
-                hideEducation
+              className={`w-full lg:w-[410px] xl:w-[440px] space-y-6 transition-all duration-400 ease-out ${hideEducation
                   ? 'opacity-0 translate-x-12 pointer-events-none absolute top-0 right-0'
                   : 'opacity-100 translate-x-0 relative'
-              }`}
+                }`}
             >
               <div className="flex items-center justify-between pb-2.5 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center space-x-2">
@@ -434,11 +544,10 @@ export const ExperienceSection: React.FC<ExperienceSectionProps> = ({
 
             {/* Hidden State: Bordered Vertical Strip 'Education Hidden' */}
             <div
-              className={`transition-all duration-300 ease-out ${
-                hideEducation
+              className={`transition-all duration-300 ease-out ${hideEducation
                   ? 'opacity-100 translate-x-0 relative delay-150'
                   : 'opacity-0 translate-x-6 pointer-events-none absolute top-0 right-0'
-              }`}
+                }`}
             >
               <button
                 onClick={() => setHideEducation(false)}
@@ -480,6 +589,14 @@ export const ExperienceSection: React.FC<ExperienceSectionProps> = ({
         </div>
 
       </div>
+
+      {openDoc && (
+        <DocumentViewer
+          attachment={openDoc.attachment}
+          context={openDoc.context}
+          onClose={() => setOpenDoc(null)}
+        />
+      )}
     </section>
   );
 };
