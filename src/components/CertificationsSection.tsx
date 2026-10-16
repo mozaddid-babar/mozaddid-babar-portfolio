@@ -158,12 +158,15 @@ export const CertificationsSection: React.FC<CertificationsSectionProps> = ({ ce
         <div className="flex flex-col justify-center min-w-0">
           <h4 className="font-sans font-bold text-sm sm:text-base text-slate-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors duration-300 truncate">{cert.title}</h4>
           <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 truncate mt-0.5">{cert.issuer}</span>
+          {cert.result && cert.resultShowInFrontend !== false && (
+            <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 truncate mt-0.5">{cert.result}</span>
+          )}
         </div>
 
         {/* Date & ID (Hidden on small screens) */}
         <div className="hidden sm:flex flex-col items-end justify-center shrink-0">
           <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{cert.date}</span>
-          {cert.credentialId && (
+          {cert.credentialId && cert.credentialIdShowInFrontend !== false && (
             <span className="font-mono text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{cert.credentialId}</span>
           )}
         </div>
@@ -312,6 +315,12 @@ export const CertificationsSection: React.FC<CertificationsSectionProps> = ({ ce
                 </div>
 
                 <dl className="border-t border-slate-200 dark:border-slate-800 text-sm">
+                  {modalCert.result && modalCert.resultShowInFrontend !== false && (
+                    <div className="flex justify-between gap-3 py-2.5 border-b border-slate-200 dark:border-slate-800">
+                      <dt className="text-slate-500 dark:text-slate-400">Result</dt>
+                      <dd className="font-semibold text-amber-700 dark:text-amber-400 text-right">{modalCert.result}</dd>
+                    </div>
+                  )}
                   {modalCert.date && (
                     <div className="flex justify-between gap-3 py-2.5 border-b border-slate-200 dark:border-slate-800">
                       <dt className="text-slate-500 dark:text-slate-400">Issued</dt>
@@ -324,7 +333,7 @@ export const CertificationsSection: React.FC<CertificationsSectionProps> = ({ ce
                       <dd className="font-mono text-slate-800 dark:text-slate-200 text-right">{modalCert.category}</dd>
                     </div>
                   )}
-                  {modalCert.credentialId && (
+                  {modalCert.credentialId && modalCert.credentialIdShowInFrontend !== false && (
                     <div className="flex justify-between gap-3 py-2.5 border-b border-slate-200 dark:border-slate-800">
                       <dt className="text-slate-500 dark:text-slate-400">Credential ID</dt>
                       <dd className="font-mono text-slate-800 dark:text-slate-200 text-right break-all">{modalCert.credentialId}</dd>
@@ -336,7 +345,7 @@ export const CertificationsSection: React.FC<CertificationsSectionProps> = ({ ce
                   <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{modalCert.description}</p>
                 )}
 
-                {modalCert.credentialUrl && (
+                {modalCert.credentialUrl && modalCert.credentialUrlShowInFrontend !== false && (
                   <div>
                     <a
                       href={modalCert.credentialUrl}

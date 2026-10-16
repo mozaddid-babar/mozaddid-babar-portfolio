@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { VisibilityToggle } from './VisibilityToggle';
 import { useDragReorder } from './useDragReorder';
-import { Code, Plus, Search, Edit3, Trash2, X, Github, ExternalLink, Sparkles, Eye, EyeOff, FileText, GripVertical } from 'lucide-react';
-import { Project } from '../../../types';
+import { LinkVisibility } from './LinkVisibility';
+import { Code, Plus, Search, Edit3, Trash2, X, Github, ExternalLink, Sparkles, Eye, EyeOff, FileText, GripVertical, FlaskConical, Wrench } from 'lucide-react';
+import { Project, ProjectType, Publication } from '../../../types';
+import { getProjectType, PROJECT_TYPE_LABELS } from '../../../utils/cvOrdering';
 import { createProjectAPI, updateProjectAPI, deleteProjectAPI } from '../../../api';
 
 interface ProjectsTabProps {
   projects: Project[];
+  publications?: Publication[];
   onRefresh: () => void;
   showToast: (msg: string, type?: 'success' | 'error') => void;
 }
@@ -14,6 +17,8 @@ interface ProjectsTabProps {
 const EMPTY_PROJ: Omit<Project, 'id'> = {
   title: '',
   category: 'Healthcare AI / Full Stack',
+  projectType: 'technical',
+  showTypeBadge: true,
   description: '',
   fullDescription: '',
   buildNote: '',
@@ -25,46 +30,33 @@ const EMPTY_PROJ: Omit<Project, 'id'> = {
   githubShowInCv: false,
   liveShowInFrontend: true,
   liveShowInCv: false,
+  cvPrintLinkUrls: false,
+  role: '',
+  roleShowInFrontend: true,
+  roleShowInCv: true,
+  highlights: [],
+  highlightsShowInFrontend: true,
+  highlightsShowInCv: true,
+  relatedPublicationId: '',
+  publicationShowInFrontend: true,
+  publicationShowInCv: true,
+  technologiesShowInFrontend: true,
+  technologiesShowInCv: true,
+  dateShowInFrontend: true,
+  dateShowInCv: true,
   featured: false,
   date: '',
   showInFrontend: true,
   showInCv: true
 };
 
-// Compact Frontend / CV switches shown under each project link field
-const LinkVisibility: React.FC<{
-  showInFrontend: boolean;
-  showInCv: boolean;
-  onChange: (field: 'frontend' | 'cv', value: boolean) => void;
-}> = ({ showInFrontend, showInCv, onChange }) => (
-  <div className="flex items-center gap-2 mt-1.5">
-    <button
-      type="button"
-      onClick={() => onChange('frontend', !showInFrontend)}
-      title={showInFrontend ? 'Shown on the website. Click to hide.' : 'Hidden on the website. Click to show.'}
-      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${showInFrontend ? 'bg-brand-950/50 border-brand-800 text-brand-300' : 'bg-slate-900 border-slate-700 text-slate-500 line-through'}`}
-    >
-      {showInFrontend ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-      Frontend
-    </button>
-    <button
-      type="button"
-      onClick={() => onChange('cv', !showInCv)}
-      title={showInCv ? 'Shown in the CV. Click to hide.' : 'Hidden in the CV. Click to show.'}
-      className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${showInCv ? 'bg-indigo-950/50 border-indigo-800 text-indigo-300' : 'bg-slate-900 border-slate-700 text-slate-500 line-through'}`}
-    >
-      <FileText className="w-3 h-3" />
-      CV PDF
-    </button>
-  </div>
-);
-
-export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, showToast }) => {
+export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, publications = [], onRefresh, showToast }) => {
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Omit<Project, 'id'>>(EMPTY_PROJ);
   const [techInput, setTechInput] = useState('');
+  const [highlightsInput, setHighlightsInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -81,6 +73,7 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
     setEditingId(null);
     setFormData(EMPTY_PROJ);
     setTechInput('');
+    setHighlightsInput('');
     setIsModalOpen(true);
   };
 
@@ -89,6 +82,8 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
     setFormData({
       title: proj.title,
       category: proj.category,
+      projectType: getProjectType(proj),
+      showTypeBadge: proj.showTypeBadge ?? true,
       description: proj.description,
       fullDescription: proj.fullDescription || '',
       buildNote: proj.buildNote || '',
@@ -100,12 +95,27 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
       githubShowInCv: proj.githubShowInCv ?? false,
       liveShowInFrontend: proj.liveShowInFrontend ?? true,
       liveShowInCv: proj.liveShowInCv ?? false,
+      cvPrintLinkUrls: proj.cvPrintLinkUrls ?? false,
+      role: proj.role || '',
+      roleShowInFrontend: proj.roleShowInFrontend ?? true,
+      roleShowInCv: proj.roleShowInCv ?? true,
+      highlights: proj.highlights || [],
+      highlightsShowInFrontend: proj.highlightsShowInFrontend ?? true,
+      highlightsShowInCv: proj.highlightsShowInCv ?? true,
+      relatedPublicationId: proj.relatedPublicationId || '',
+      publicationShowInFrontend: proj.publicationShowInFrontend ?? true,
+      publicationShowInCv: proj.publicationShowInCv ?? true,
+      technologiesShowInFrontend: proj.technologiesShowInFrontend ?? true,
+      technologiesShowInCv: proj.technologiesShowInCv ?? true,
+      dateShowInFrontend: proj.dateShowInFrontend ?? true,
+      dateShowInCv: proj.dateShowInCv ?? true,
       featured: !!proj.featured,
       date: proj.date || '',
       showInFrontend: proj.showInFrontend ?? true,
       showInCv: proj.showInCv ?? true
     });
     setTechInput((proj.technologies || []).join(', '));
+    setHighlightsInput((proj.highlights || []).join('\n'));
     setIsModalOpen(true);
   };
 
@@ -118,9 +128,12 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
 
     setLoading(true);
     const parsedTech = techInput.split(',').map(t => t.trim()).filter(Boolean);
+    // One highlight per line; a leading bullet or dash typed by hand is dropped
+    const parsedHighlights = highlightsInput.split('\n').map(h => h.replace(/^\s*[-•*]\s*/, '').trim()).filter(Boolean);
     const payload = {
       ...formData,
-      technologies: parsedTech
+      technologies: parsedTech,
+      highlights: parsedHighlights
     };
 
     try {
@@ -209,6 +222,17 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
                   <span className="px-2 py-0.5 rounded bg-purple-950 text-purple-300 font-semibold text-[11px]">
                     {proj.category}
                   </span>
+                  {getProjectType(proj) === 'research' ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-sky-950 text-sky-300 font-semibold text-[11px]" title={proj.showTypeBadge === false ? 'Marker hidden on website' : 'Marker shown on website'}>
+                      <FlaskConical className="w-3 h-3" /> Research
+                      {proj.showTypeBadge === false && <EyeOff className="w-3 h-3 opacity-70" />}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-950 text-amber-300 font-semibold text-[11px]" title={proj.showTypeBadge === false ? 'Marker hidden on website' : 'Marker shown on website'}>
+                      <Wrench className="w-3 h-3" /> Technical
+                      {proj.showTypeBadge === false && <EyeOff className="w-3 h-3 opacity-70" />}
+                    </span>
+                  )}
                 </div>
                 {proj.date && <span className="text-slate-400 font-medium">{proj.date}</span>}
               </div>
@@ -286,6 +310,41 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Project Type
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {(['research', 'technical'] as ProjectType[]).map(type => {
+                    const active = (formData.projectType || 'technical') === type;
+                    const Icon = type === 'research' ? FlaskConical : Wrench;
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, projectType: type })}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${active ? (type === 'research' ? 'bg-sky-950/60 border-sky-700 text-sky-300' : 'bg-amber-950/60 border-amber-700 text-amber-300') : 'bg-slate-900 border-slate-700 text-slate-400 hover:text-slate-200'}`}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                        {PROJECT_TYPE_LABELS[type]}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, showTypeBadge: !(formData.showTypeBadge ?? true) })}
+                    title={(formData.showTypeBadge ?? true) ? 'Marker is shown on the website card. Click to hide.' : 'Marker is hidden on the website card. Click to show.'}
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors ${(formData.showTypeBadge ?? true) ? 'bg-brand-950/50 border-brand-800 text-brand-300' : 'bg-slate-900 border-slate-700 text-slate-500 line-through'}`}
+                  >
+                    {(formData.showTypeBadge ?? true) ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                    Marker on website
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  The CV lists Research Projects first, then Technical Projects, each under its own sub-heading.
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -309,10 +368,33 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
                     type="text"
                     value={formData.date || ''}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    placeholder="e.g. 2023 - 2024"
+                    placeholder="e.g. Jan 2023 - Jun 2023"
                     className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
                   />
+                  <LinkVisibility
+                    showInFrontend={formData.dateShowInFrontend ?? true}
+                    showInCv={formData.dateShowInCv ?? true}
+                    onChange={(field, val) => setFormData({ ...formData, [field === 'frontend' ? 'dateShowInFrontend' : 'dateShowInCv']: val })}
+                  />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Role / Lab / Supervisor
+                </label>
+                <input
+                  type="text"
+                  value={formData.role || ''}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  placeholder={(formData.projectType || 'technical') === 'research' ? 'e.g. Undergraduate Thesis · Dept. of CSE, HSTU · Supervisor: Dr. X' : 'e.g. Solo project · Full-stack'}
+                  className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
+                />
+                <LinkVisibility
+                  showInFrontend={formData.roleShowInFrontend ?? true}
+                  showInCv={formData.roleShowInCv ?? true}
+                  onChange={(field, val) => setFormData({ ...formData, [field === 'frontend' ? 'roleShowInFrontend' : 'roleShowInCv']: val })}
+                />
               </div>
 
               <div>
@@ -326,6 +408,48 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Brief overview of the tool..."
                   className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white resize-y"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Key Results / Highlights (one per line)
+                </label>
+                <textarea
+                  rows={3}
+                  value={highlightsInput}
+                  onChange={(e) => setHighlightsInput(e.target.value)}
+                  placeholder={'Achieved 94.2% accuracy on 64-channel EEG recordings (n = 120)\nReduced feature set by 60% using correlation-based selection'}
+                  className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white resize-y"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">Keep it to 1–2 lines, with a number where possible. Shown as bullets.</p>
+                <LinkVisibility
+                  showInFrontend={formData.highlightsShowInFrontend ?? true}
+                  showInCv={formData.highlightsShowInCv ?? true}
+                  onChange={(field, val) => setFormData({ ...formData, [field === 'frontend' ? 'highlightsShowInFrontend' : 'highlightsShowInCv']: val })}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  Related Publication
+                </label>
+                <select
+                  value={formData.relatedPublicationId || ''}
+                  onChange={(e) => setFormData({ ...formData, relatedPublicationId: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
+                >
+                  <option value="">None</option>
+                  {publications.map(pub => (
+                    <option key={pub.id} value={pub.id}>
+                      {pub.title.length > 90 ? `${pub.title.slice(0, 90)}…` : pub.title} ({pub.year})
+                    </option>
+                  ))}
+                </select>
+                <LinkVisibility
+                  showInFrontend={formData.publicationShowInFrontend ?? true}
+                  showInCv={formData.publicationShowInCv ?? true}
+                  onChange={(field, val) => setFormData({ ...formData, [field === 'frontend' ? 'publicationShowInFrontend' : 'publicationShowInCv']: val })}
                 />
               </div>
 
@@ -352,6 +476,11 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
                   onChange={(e) => setTechInput(e.target.value)}
                   placeholder="PyTorch, FastAPI, React, TypeScript, Docker"
                   className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
+                />
+                <LinkVisibility
+                  showInFrontend={formData.technologiesShowInFrontend ?? true}
+                  showInCv={formData.technologiesShowInCv ?? true}
+                  onChange={(field, val) => setFormData({ ...formData, [field === 'frontend' ? 'technologiesShowInFrontend' : 'technologiesShowInCv']: val })}
                 />
               </div>
 
@@ -391,6 +520,19 @@ export const ProjectsTab: React.FC<ProjectsTabProps> = ({ projects, onRefresh, s
                     onChange={(field, val) => setFormData({ ...formData, [field === 'frontend' ? 'liveShowInFrontend' : 'liveShowInCv']: val })}
                   />
                 </div>
+
+                <label className="sm:col-span-2 flex items-start gap-2 text-xs text-slate-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!formData.cvPrintLinkUrls}
+                    onChange={(e) => setFormData({ ...formData, cvPrintLinkUrls: e.target.checked })}
+                    className="mt-0.5 accent-indigo-500"
+                  />
+                  <span>
+                    Print link addresses in the CV
+                    <span className="block text-[11px] text-slate-500">Shows e.g. github.com/user/repo next to the icon, so printed copies stay readable.</span>
+                  </span>
+                </label>
               <div className="sm:col-span-2">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-semibold text-slate-300">

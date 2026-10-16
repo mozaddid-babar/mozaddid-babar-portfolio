@@ -309,6 +309,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'projects' && (
           <ProjectsTab
             projects={data.projects}
+            publications={data.publications}
             onRefresh={onRefresh}
             showToast={showToast}
           />
@@ -369,6 +370,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         {activeTab === 'certifications' && (
           <CertificationsTab
             certifications={data.certifications}
+            sections={data.sections}
             onRefresh={onRefresh}
             showToast={showToast}
           />

@@ -335,6 +335,7 @@ export function App() {
         content = (
           <ProjectsSection
             projects={data.projects.filter(p => p.showInFrontend !== false)}
+            publications={data.publications}
             isAlt={isAlt}
             sectionConfig={sec}
           />

@@ -84,10 +84,16 @@ export interface Publication {
   showInCv?: boolean;
 }
 
+export type ProjectType = 'research' | 'technical';
+
 export interface Project {
   id: string;
   title: string;
   category: string;
+  // Research projects are listed before technical ones in the CV, each under its own sub-heading
+  projectType?: ProjectType;
+  // Shows the Research / Technical marker on the website card (default: shown)
+  showTypeBadge?: boolean;
   description: string;
   fullDescription?: string;
   buildNote?: string;
@@ -99,6 +105,24 @@ export interface Project {
   githubShowInCv?: boolean;
   liveShowInFrontend?: boolean;
   liveShowInCv?: boolean;
+  // In the CV, print the short link address (e.g. github.com/user/repo) beside the icon so it reads on paper
+  cvPrintLinkUrls?: boolean;
+  // Role / lab / supervisor line shown under the title, e.g. "Undergraduate Thesis · Dept. of CSE, HSTU"
+  role?: string;
+  roleShowInFrontend?: boolean;
+  roleShowInCv?: boolean;
+  // Key results as short bullets, ideally with numbers
+  highlights?: string[];
+  highlightsShowInFrontend?: boolean;
+  highlightsShowInCv?: boolean;
+  // Publication this project led to (Publication.id)
+  relatedPublicationId?: string;
+  publicationShowInFrontend?: boolean;
+  publicationShowInCv?: boolean;
+  technologiesShowInFrontend?: boolean;
+  technologiesShowInCv?: boolean;
+  dateShowInFrontend?: boolean;
+  dateShowInCv?: boolean;
   imageUrl?: string;
   images?: string[];
   featured?: boolean;
@@ -219,6 +243,18 @@ export interface Certification {
   date: string;
   credentialId?: string;
   credentialUrl?: string;
+  // Per-field visibility. Verify link shows on the site and in the CV unless switched off;
+  // the credential ID shows on the site unless switched off, and in the CV only when switched on.
+  credentialUrlShowInFrontend?: boolean;
+  credentialUrlShowInCv?: boolean;
+  credentialIdShowInFrontend?: boolean;
+  credentialIdShowInCv?: boolean;
+  // In the CV, print the short verify address next to the icon so it reads on paper
+  cvPrintLinkUrl?: boolean;
+  // Outcome placed before the title, e.g. "Honorable Mention, Rangpur Division Champion"
+  result?: string;
+  resultShowInFrontend?: boolean;
+  resultShowInCv?: boolean;
   category?: string;
   description?: string;
   imageUrl?: string;
@@ -300,8 +336,21 @@ export type SectionHoverEffect =
   | 'magnetic'            // Magnetic gentle cursor attraction
   | 'none';               // No hover transform
 
+// Where a certification category goes in the generated CV
+export type CvCategoryPlacement = 'certifications' | 'achievements' | 'hidden';
+
+export interface CvCategoryGroup {
+  category: string;          // matches Certification.category (case-insensitive)
+  heading?: string;          // CV sub-heading; falls back to the category name
+  placement: CvCategoryPlacement;
+}
+
 export interface SectionConfig {
   id: string;
+  // Certifications section only: CV layout
+  cvSortByDate?: boolean;              // newest first (default: true)
+  cvGroupByCategory?: boolean;         // sub-heading per category (default: true)
+  cvCategoryGroups?: CvCategoryGroup[]; // order, headings and placement of each category
   label: string;
   title?: string;
   cvTitle?: string;            // Custom section heading for generated CV resume & PDF

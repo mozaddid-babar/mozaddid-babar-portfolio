@@ -4,12 +4,15 @@ import {
   Download,
   FileText,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Github,
+  Globe
 } from 'lucide-react';
-import { PortfolioData, DEFAULT_SECTIONS, DEFAULT_CV_TITLES, SectionConfig } from '../types';
+import { PortfolioData, DEFAULT_SECTIONS, DEFAULT_CV_TITLES, SectionConfig, Certification } from '../types';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { replaceOklchInString, oklchToRgb } from '../utils/colorUtils';
+import { sortExperienceByDateDesc, getProjectType, shortUrl, buildCertCvLayout } from '../utils/cvOrdering';
 
 /**
  * Generates and downloads a pristine, professional PDF directly using jsPDF + html2canvas.
@@ -387,6 +390,56 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
     );
   };
 
+  // Small clickable icons for item links (projects, certifications), optionally followed by the short address for printed copies
+  const renderCvIconLinks = (
+    entries: ({ label: string; href: string; Icon: typeof Github } | null | undefined | false | '')[],
+    printUrls = false
+  ) => {
+    const links = entries.filter(Boolean) as { label: string; href: string; Icon: typeof Github }[];
+    if (links.length === 0) return null;
+    return (
+      <span className="font-normal ml-2">
+        {links.map(({ label, href, Icon }) => (
+          // Explicit stroke color so the icon keeps its color in the html2canvas PDF capture
+          <a
+            key={label}
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            title={label}
+            aria-label={label}
+            className="inline-block whitespace-nowrap mr-1.5 text-[12.5px] text-[#1e40af] hover:opacity-70"
+          >
+            <Icon color="#1e40af" strokeWidth={2} className="inline-block w-[14px] h-[14px] align-[-2px]" />
+            {printUrls && <span className="ml-0.5">{shortUrl(href)}</span>}
+          </a>
+        ))}
+      </span>
+    );
+  };
+
+  // One certification line: result first when set ("Honorable Mention — ICPC …, ICPC"), then ID, verify link and date
+  const renderCertCvLine = (c: Certification) => {
+    const showResult = !!c.result?.trim() && c.resultShowInCv !== false;
+    return (
+      <div key={c.id} className="cv-item-block flex justify-between items-baseline">
+        <span>
+          {showResult
+            ? <><strong className="text-black">{c.result}</strong> — {c.title}, {c.issuer}</>
+            : <><strong className="text-black">{c.title}</strong> — {c.issuer}</>}
+          {c.credentialId && c.credentialIdShowInCv && (
+            <span className="text-[12.5px] text-[#475569]"> · ID: {c.credentialId}</span>
+          )}
+          {/* Verify link appears in the CV unless switched off in Admin → Certifications */}
+          {renderCvIconLinks([
+            c.credentialUrl && c.credentialUrlShowInCv !== false ? { label: 'Verify credential', href: c.credentialUrl, Icon: ExternalLink } : null
+          ], !!c.cvPrintLinkUrl)}
+        </span>
+        <span className="text-[13.5px] ml-4 shrink-0 whitespace-nowrap">{c.date}</span>
+      </div>
+    );
+  };
+
   // Helper to render section headings perfectly centered vertically between two horizontal lines
   const renderSectionHeading = (title: string) => (
     <h2
@@ -757,7 +810,8 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
             // 4. PROFESSIONAL EXPERIENCES & EDUCATION
             case 'experience': {
               const edus = (data.education || []).filter(e => e.showInCv !== false);
-              const exps = (data.experience || []).filter(e => e.showInCv !== false);
+              // Latest work first, regardless of the order saved in Admin
+              const exps = sortExperienceByDateDesc((data.experience || []).filter(e => e.showInCv !== false));
               const hasSeparateEduSection = cvSections.some(s => s.id === 'education');
 
               if (exps.length === 0 && (hasSeparateEduSection || edus.length === 0)) return null;
@@ -832,47 +886,71 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
             case 'projects': {
               const projs = (data.projects || []).filter(p => p.showInCv !== false);
               if (projs.length === 0) return null;
+              // Research Projects come first, then Technical Projects, each under its own sub-heading
+              const projectGroups = [
+                { key: 'research', label: 'Research Projects:', items: projs.filter(p => getProjectType(p) === 'research') },
+                { key: 'technical', label: 'Technical Projects:', items: projs.filter(p => getProjectType(p) === 'technical') }
+              ].filter(g => g.items.length > 0);
               return (
                 <div key={sec.id} className="cv-section-block">
                   {renderSectionHeading(getSectionCvHeading(sec, 'projects'))}
-                  <div className="space-y-3.5 font-serif text-[14px] text-black">
-                    {projs.map(p => (
-                      <div key={p.id} className="cv-item-block">
-                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline font-bold text-black">
-                          <span>
-                            {p.title}
+                  {projectGroups.map(group => (
+                    <div key={group.key} className="mb-3.5">
+                      <h3 className="font-serif font-bold text-[14px] text-black mb-1.5">
+                        {group.label}
+                      </h3>
+                      <div className="space-y-3.5 font-serif text-[14px] text-black">
+                        {group.items.map(p => (
+                          <div key={p.id} className="cv-item-block">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-baseline font-bold text-black">
+                              <span>
+                                {p.title}
+                                {/* Project links appear in the CV only when switched on in Admin → Projects */}
+                                {renderCvIconLinks([
+                                  p.githubUrl && p.githubShowInCv ? { label: 'GitHub', href: p.githubUrl, Icon: Github } : null,
+                                  p.liveUrl && p.liveShowInCv ? { label: 'Live Demo', href: p.liveUrl, Icon: Globe } : null
+                                ], !!p.cvPrintLinkUrls)}
+                              </span>
+                              {p.date && p.dateShowInCv !== false && <span className="font-normal text-[13.5px] sm:ml-4 shrink-0 whitespace-nowrap">{p.date}</span>}
+                            </div>
+                            {p.role && p.roleShowInCv !== false && (
+                              <div className="text-[13.5px] text-[#334155]">{p.role}</div>
+                            )}
+                            <p className="mt-0.5 leading-[1.6] text-left">
+                              {p.description}
+                            </p>
+                            {p.highlights && p.highlights.length > 0 && p.highlightsShowInCv !== false && (
+                              <ul className="list-disc list-outside ml-5 mt-0.5 space-y-0.5 leading-[1.6] text-left">
+                                {p.highlights.map((h, i) => <li key={i}>{h}</li>)}
+                              </ul>
+                            )}
                             {(() => {
-                              // Project links appear in the CV only when switched on in Admin → Projects
-                              const links = [
-                                p.githubUrl && p.githubShowInCv ? { label: 'GitHub', href: p.githubUrl } : null,
-                                p.liveUrl && p.liveShowInCv ? { label: 'Live Demo', href: p.liveUrl } : null
-                              ].filter(Boolean) as { label: string; href: string }[];
-                              if (links.length === 0) return null;
+                              const pub = p.publicationShowInCv !== false && p.relatedPublicationId
+                                ? (data.publications || []).find(x => x.id === p.relatedPublicationId)
+                                : undefined;
+                              if (!pub) return null;
+                              const pubHref = pub.doi ? (pub.doi.startsWith('http') ? pub.doi : `https://doi.org/${pub.doi}`) : pub.link;
+                              const isPublished = pub.category === 'Journal' || pub.category === 'Conference' || pub.category === 'Book Chapter' || pub.category === 'Workshop';
                               return (
-                                <span className="font-normal text-[13px] ml-2">
-                                  {links.map((link, idx) => (
-                                    <React.Fragment key={link.label}>
-                                      {idx > 0 && <span className="mx-1.5 text-[#64748b]">•</span>}
-                                      <a href={link.href} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline whitespace-nowrap">{link.label}</a>
-                                    </React.Fragment>
-                                  ))}
-                                </span>
+                                <div className="mt-0.5 text-[13.5px] leading-[1.6] text-left">
+                                  → {isPublished ? 'Published in' : `${pub.category}:`}{' '}
+                                  {pubHref
+                                    ? <a href={pubHref} target="_blank" rel="noreferrer" className="text-[#1e40af] hover:underline">{pub.venue}</a>
+                                    : <span>{pub.venue}</span>}
+                                  {' '}({pub.year})
+                                </div>
                               );
                             })()}
-                          </span>
-                          {p.date &&<span className="font-normal text-[13.5px] sm:ml-4 shrink-0 whitespace-nowrap">{p.date}</span>}
-                        </div>
-                        <p className="mt-0.5 leading-[1.6] text-left">
-                          {p.description}
-                        </p>
-                        {p.technologies && p.technologies.length > 0 && (
-                          <div className="mt-0.5 text-[12.5px] text-[#334155]">
-                            <span className="font-semibold">Technologies:</span> {p.technologies.join(', ')}
+                            {p.technologies && p.technologies.length > 0 && p.technologiesShowInCv !== false && (
+                              <div className="mt-0.5 text-[12.5px] text-[#475569]">
+                                <span className="font-semibold">Technologies:</span> {p.technologies.join(', ')}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               );
             }
@@ -925,7 +1003,10 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
             // 8. KEY ACHIEVEMENTS
             case 'achievements': {
               const achs = (data.achievements || []).filter(a => a.showInCv !== false);
-              if (achs.length === 0) return null;
+              // Certification categories moved here in Admin → Certifications → CV Layout (e.g. Competitions)
+              const certSec = sections.find(s => s.id === 'certifications');
+              const { achievementCerts } = buildCertCvLayout((data.certifications || []).filter(c => c.showInCv !== false), certSec);
+              if (achs.length === 0 && achievementCerts.length === 0) return null;
               return (
                 <div key={sec.id} className="cv-section-block">
                   {renderSectionHeading(getSectionCvHeading(sec, 'achievements'))}
@@ -939,6 +1020,11 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
                         {a.description && <p className="mt-0.5 leading-[1.5] text-[#1e293b] text-left">{a.description}</p>}
                       </div>
                     ))}
+                    {achievementCerts.length > 0 && (
+                      <div className="space-y-1.5">
+                        {achievementCerts.map(renderCertCvLine)}
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -946,19 +1032,24 @@ export const CvDocumentContent: React.FC<{ data: PortfolioData }> = ({ data }) =
 
             // 9. CERTIFICATIONS & SPECIALIZED TRAINING
             case 'certifications': {
-              const certs = (data.certifications || []).filter(c => c.showInCv !== false);
-              if (certs.length === 0) return null;
+              // Sorting, sub-headings and category placement come from Admin → Certifications → CV Layout
+              const { certGroups } = buildCertCvLayout((data.certifications || []).filter(c => c.showInCv !== false), sec);
+              if (certGroups.length === 0) return null;
               return (
                 <div key={sec.id} className="cv-section-block">
                   {renderSectionHeading(getSectionCvHeading(sec, 'certifications'))}
-                  <div className="space-y-1.5 font-serif text-[14px] text-black">
-                    {certs.map(c => (
-                      <div key={c.id} className="cv-item-block flex justify-between items-baseline">
-                        <span><strong className="text-black">{c.title}</strong> — {c.issuer}</span>
-                        <span className="text-[13.5px] ml-4 shrink-0 whitespace-nowrap">{c.date}</span>
+                  {certGroups.map(group => (
+                    <div key={group.heading || 'all'} className="mb-3">
+                      {group.heading && (
+                        <h3 className="font-serif font-bold text-[14px] text-black mb-1">
+                          {group.heading}:
+                        </h3>
+                      )}
+                      <div className="space-y-1.5 font-serif text-[14px] text-black">
+                        {group.items.map(renderCertCvLine)}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               );
             }

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { VisibilityToggle } from './VisibilityToggle';
+import { LinkVisibility } from './LinkVisibility';
+import { CertCvLayoutPanel } from './CertCvLayoutPanel';
 import { ShieldCheck, Plus, Edit3, Trash2, X, ExternalLink, Image as ImageIcon, GripVertical, Upload } from 'lucide-react';
-import { Certification } from '../../../types';
+import { Certification, SectionConfig } from '../../../types';
 import { createCertificationAPI, updateCertificationAPI, deleteCertificationAPI, reorderCertificationsAPI } from '../../../api';
 
 interface CertificationsTabProps {
   certifications?: Certification[];
+  sections?: SectionConfig[];
   onRefresh: () => void;
   showToast: (msg: string, type?: 'success' | 'error') => void;
 }
@@ -42,6 +45,7 @@ const dataUrlSizeKb = (dataUrl: string) => Math.round((dataUrl.length - dataUrl.
 
 export const CertificationsTab: React.FC<CertificationsTabProps> = ({
   certifications = [],
+  sections = [],
   onRefresh,
   showToast
 }) => {
@@ -57,6 +61,14 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
     description: '',
     imageUrl: '',
     credentialUrl: '',
+    result: '',
+    resultShowInFrontend: true,
+    resultShowInCv: true,
+    credentialUrlShowInFrontend: true,
+    credentialUrlShowInCv: true,
+    credentialIdShowInFrontend: true,
+    credentialIdShowInCv: false,
+    cvPrintLinkUrl: false,
     category: '',
     showInFrontend: true,
     showInCv: true
@@ -121,6 +133,14 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
       description: '',
       imageUrl: '',
       credentialUrl: '',
+      result: '',
+      resultShowInFrontend: true,
+      resultShowInCv: true,
+      credentialUrlShowInFrontend: true,
+      credentialUrlShowInCv: true,
+      credentialIdShowInFrontend: true,
+      credentialIdShowInCv: false,
+      cvPrintLinkUrl: false,
       category: '',
       showInFrontend: true,
       showInCv: true
@@ -138,6 +158,14 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
       description: cert.description || '',
       imageUrl: cert.imageUrl || '',
       credentialUrl: cert.credentialUrl || '',
+      result: cert.result || '',
+      resultShowInFrontend: cert.resultShowInFrontend ?? true,
+      resultShowInCv: cert.resultShowInCv ?? true,
+      credentialUrlShowInFrontend: cert.credentialUrlShowInFrontend ?? true,
+      credentialUrlShowInCv: cert.credentialUrlShowInCv ?? true,
+      credentialIdShowInFrontend: cert.credentialIdShowInFrontend ?? true,
+      credentialIdShowInCv: cert.credentialIdShowInCv ?? false,
+      cvPrintLinkUrl: cert.cvPrintLinkUrl ?? false,
       category: cert.category || '',
       showInFrontend: cert.showInFrontend ?? true,
       showInCv: cert.showInCv ?? true
@@ -216,6 +244,15 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
         </button>
       </div>
 
+      {sections.length > 0 && (
+        <CertCvLayoutPanel
+          sections={sections}
+          certifications={certifications}
+          onRefresh={onRefresh}
+          showToast={showToast}
+        />
+      )}
+
       <div className="space-y-4">
         {certifications.length === 0 ? (
           <div className="text-center py-10 bg-slate-900/50 rounded-2xl border border-slate-800">
@@ -249,6 +286,9 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
                   )}
                   <div>
                     <h3 className="text-white font-bold">{cert.title}</h3>
+                    {cert.result && (
+                      <div className="text-xs text-amber-300 font-semibold mt-0.5">{cert.result}</div>
+                    )}
                     <div className="text-sm text-slate-400 mt-0.5">
                       {cert.issuer} • {cert.date}
                     </div>
@@ -322,11 +362,31 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
                     />
                   </div>
                   <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Result / Outcome (Optional)</label>
+                    <input
+                      type="text" value={formData.result || ''}
+                      onChange={e => setFormData({ ...formData, result: e.target.value })}
+                      placeholder="e.g. Honorable Mention, Rangpur Division Champion"
+                      className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">Shown before the title in the CV, e.g. <span className="text-slate-400">Honorable Mention — ICPC Asia Dhaka Regional 2020</span>. Leave empty for participation.</p>
+                    <LinkVisibility
+                      showInFrontend={formData.resultShowInFrontend ?? true}
+                      showInCv={formData.resultShowInCv ?? true}
+                      onChange={(field, val) => setFormData({ ...formData, [field === 'frontend' ? 'resultShowInFrontend' : 'resultShowInCv']: val })}
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Credential ID</label>
                     <input
                       type="text" value={formData.credentialId || ''}
                       onChange={e => setFormData({ ...formData, credentialId: e.target.value })}
                       className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white font-mono"
+                    />
+                    <LinkVisibility
+                      showInFrontend={formData.credentialIdShowInFrontend ?? true}
+                      showInCv={formData.credentialIdShowInCv ?? false}
+                      onChange={(field, val) => setFormData({ ...formData, [field === 'frontend' ? 'credentialIdShowInFrontend' : 'credentialIdShowInCv']: val })}
                     />
                   </div>
                   <div className="sm:col-span-2">
@@ -357,6 +417,20 @@ export const CertificationsTab: React.FC<CertificationsTabProps> = ({
                       placeholder="https://drive.google.com/..."
                       className="w-full px-3.5 py-2 text-xs sm:text-sm bg-slate-900 border border-slate-700 rounded-xl text-white"
                     />
+                    <LinkVisibility
+                      showInFrontend={formData.credentialUrlShowInFrontend ?? true}
+                      showInCv={formData.credentialUrlShowInCv ?? true}
+                      onChange={(field, val) => setFormData({ ...formData, [field === 'frontend' ? 'credentialUrlShowInFrontend' : 'credentialUrlShowInCv']: val })}
+                    />
+                    <label className="flex items-center gap-2 mt-1.5 text-[11px] text-slate-400 cursor-pointer" title="Shows e.g. coursera.org/verify/ABC next to the icon, so printed copies stay readable">
+                      <input
+                        type="checkbox"
+                        checked={!!formData.cvPrintLinkUrl}
+                        onChange={e => setFormData({ ...formData, cvPrintLinkUrl: e.target.checked })}
+                        className="accent-indigo-500"
+                      />
+                      Print address in CV
+                    </label>
                   </div>
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-slate-300 mb-1">Certificate Image</label>

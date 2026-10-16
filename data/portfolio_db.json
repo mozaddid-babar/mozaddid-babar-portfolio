@@ -215,7 +215,29 @@
       "githubUrl": "https://github.com/mozaddid-babar/Ema-John-Private-Route-Module-59",
       "liveUrl": "https://ema-john-firebase-auth-eaf32.web.app/?_gl=1*pyq7eo*_ga*MjEyMDYyMzI5MC4xNjk3OTcwODAw*_ga_CW55HF8NVT*MTY5Nzk3MDgwMC4xLjEuMTY5Nzk3MTU2MS40My4wLjA.",
       "showInFrontend": true,
-      "showInCv": true
+      "showInCv": true,
+      "projectType": "research",
+      "showTypeBadge": true,
+      "githubShowInFrontend": true,
+      "githubShowInCv": false,
+      "liveShowInFrontend": true,
+      "liveShowInCv": false,
+      "cvPrintLinkUrls": true,
+      "role": "Undergraduate Thesis, Dept. of CSE, HSTU, Supervisor - Emran Ali",
+      "roleShowInFrontend": true,
+      "roleShowInCv": true,
+      "highlights": [
+        "Achieved 94.5% accuracy in detecting MDD using large dataset."
+      ],
+      "highlightsShowInFrontend": true,
+      "highlightsShowInCv": true,
+      "relatedPublicationId": "pub-1788735507708-2575",
+      "publicationShowInFrontend": true,
+      "publicationShowInCv": true,
+      "technologiesShowInFrontend": true,
+      "technologiesShowInCv": true,
+      "dateShowInFrontend": true,
+      "dateShowInCv": true
     },
     {
       "id": "proj-r2",
@@ -240,7 +262,25 @@
       "githubUrl": "https://github.com/mozaddid-babar/Diabetes-melitus-prediction",
       "liveUrl": "",
       "showInFrontend": true,
-      "showInCv": true
+      "showInCv": true,
+      "roleShowInFrontend": true,
+      "roleShowInCv": true,
+      "highlightsShowInFrontend": true,
+      "highlightsShowInCv": true,
+      "publicationShowInFrontend": true,
+      "publicationShowInCv": true,
+      "technologiesShowInFrontend": true,
+      "technologiesShowInCv": true,
+      "dateShowInFrontend": true,
+      "dateShowInCv": true,
+      "showTypeBadge": true,
+      "projectType": "research",
+      "role": "Research Assistant, HSTU Research Lab",
+      "highlights": [
+        "Achieved 96.4% accuracy (precision 0.968, F1-score 0.962) with SVM on the extremely imbalanced Medical City Hospital (Iraq) dataset",
+        "Compared SVM, logistic regression and k-NN with filter, wrapper and embedded feature selection, tuned by 10-fold grid-search cross-validation"
+      ],
+      "relatedPublicationId": "pub-1"
     },
     {
       "id": "proj-1",
@@ -269,7 +309,22 @@
       "githubShowInFrontend": false,
       "githubShowInCv": true,
       "liveShowInFrontend": true,
-      "liveShowInCv": true
+      "liveShowInCv": true,
+      "roleShowInFrontend": true,
+      "roleShowInCv": true,
+      "highlightsShowInFrontend": true,
+      "highlightsShowInCv": true,
+      "publicationShowInFrontend": true,
+      "publicationShowInCv": true,
+      "technologiesShowInFrontend": true,
+      "technologiesShowInCv": true,
+      "dateShowInFrontend": true,
+      "dateShowInCv": true,
+      "showTypeBadge": true,
+      "projectType": "technical",
+      "highlights": [
+        "Category-based news browsing and full-article reading on a React JS front end backed by a Node.js/Express API"
+      ]
     },
     {
       "id": "proj-2",
@@ -295,7 +350,22 @@
       "githubUrl": "https://github.com/mozaddid-babar/Ema-John-Private-Route-Module-59",
       "liveUrl": "https://ema-john-firebase-auth-eaf32.web.app/",
       "showInFrontend": true,
-      "showInCv": true
+      "showInCv": true,
+      "roleShowInFrontend": true,
+      "roleShowInCv": true,
+      "highlightsShowInFrontend": true,
+      "highlightsShowInCv": true,
+      "publicationShowInFrontend": true,
+      "publicationShowInCv": true,
+      "technologiesShowInFrontend": true,
+      "technologiesShowInCv": true,
+      "dateShowInFrontend": true,
+      "dateShowInCv": true,
+      "showTypeBadge": true,
+      "projectType": "technical",
+      "highlights": [
+        "Product browsing, cart management, checkout and an admin dashboard for a single-vendor store"
+      ]
     },
     {
       "id": "proj-r3",
@@ -317,7 +387,24 @@
       "buildNote": "",
       "images": [],
       "githubUrl": "https://github.com/mozaddid-babar/Fingerprint-Attendance-System",
-      "liveUrl": ""
+      "liveUrl": "",
+      "roleShowInFrontend": true,
+      "roleShowInCv": true,
+      "highlightsShowInFrontend": true,
+      "highlightsShowInCv": true,
+      "publicationShowInFrontend": true,
+      "publicationShowInCv": true,
+      "technologiesShowInFrontend": true,
+      "technologiesShowInCv": true,
+      "dateShowInFrontend": true,
+      "dateShowInCv": true,
+      "showTypeBadge": true,
+      "projectType": "research",
+      "role": "Research Assistant, Institute of Research & Training (IRT), HSTU · Supervisor: Dr. Md. Arshad Ali",
+      "highlights": [
+        "Built the attendance device from a Raspberry Pi 4, R307 fingerprint module and SSD1306 OLED display",
+        "Developed client-server software (Django, Java Spring Boot) for enrollment, offline Wi-Fi operation and per-course CSV/Excel reports"
+      ]
     }
   ],
   "experience": [
@@ -646,7 +733,15 @@
       "credentialUrl": "https://drive.google.com/file/d/1hjy0IAAQrxYK71GiT54bbxAROCE5V88S/view",
       "showInFrontend": true,
       "showInCv": true,
-      "credentialId": ""
+      "credentialId": "",
+      "resultShowInFrontend": true,
+      "resultShowInCv": true,
+      "credentialUrlShowInFrontend": true,
+      "credentialUrlShowInCv": true,
+      "credentialIdShowInFrontend": true,
+      "credentialIdShowInCv": false,
+      "cvPrintLinkUrl": false,
+      "result": ""
     },
     {
       "id": "cert-python-ml",
@@ -659,12 +754,20 @@
       "credentialUrl": "https://drive.google.com/file/d/1dzqSJLqnZgd6IuH0Lcswl9o_loccw6nA/view?usp=sharing",
       "showInFrontend": true,
       "showInCv": true,
-      "credentialId": ""
+      "credentialId": "",
+      "resultShowInFrontend": true,
+      "resultShowInCv": true,
+      "credentialUrlShowInFrontend": true,
+      "credentialUrlShowInCv": true,
+      "credentialIdShowInFrontend": true,
+      "credentialIdShowInCv": false,
+      "cvPrintLinkUrl": false,
+      "result": ""
     },
     {
       "id": "cert-icpc-2020",
       "category": "Competition",
-      "title": "ICPC Asia Dhaka Regional Preliminary 2020 (Honorable Mention, Rangpur Division Champion)",
+      "title": "ICPC Asia Dhaka Regional Preliminary 2020",
       "issuer": "ICPC - International Collegiate Programming Contest",
       "date": "2020",
       "description": "Honorable Mention in the ICPC Asia Dhaka Regional preliminary contest, ranking first among teams from Rangpur Division.",
@@ -672,7 +775,15 @@
       "credentialUrl": "https://drive.google.com/file/d/1D56QORBhISb2vyHhMIpRLCfgOo004nMU/view",
       "showInFrontend": true,
       "showInCv": true,
-      "credentialId": ""
+      "credentialId": "",
+      "resultShowInFrontend": true,
+      "resultShowInCv": true,
+      "credentialUrlShowInFrontend": true,
+      "credentialUrlShowInCv": true,
+      "credentialIdShowInFrontend": true,
+      "credentialIdShowInCv": false,
+      "cvPrintLinkUrl": false,
+      "result": "Honorable Mention, Rangpur Division Champion"
     },
     {
       "id": "cert-ruet-iupc-2019",
@@ -685,7 +796,15 @@
       "credentialUrl": "https://drive.google.com/file/d/1xdsQmtxiTaVtcMfPJCzOI-dQw4Fv-PA-/view",
       "showInFrontend": true,
       "showInCv": true,
-      "credentialId": ""
+      "credentialId": "",
+      "resultShowInFrontend": true,
+      "resultShowInCv": true,
+      "credentialUrlShowInFrontend": true,
+      "credentialUrlShowInCv": true,
+      "credentialIdShowInFrontend": true,
+      "credentialIdShowInCv": false,
+      "cvPrintLinkUrl": false,
+      "result": "Rangpur Division Champion"
     },
     {
       "id": "cert-kuet-bitfest-2019",
@@ -698,7 +817,15 @@
       "credentialUrl": "https://drive.google.com/file/d/15Y1JBfGK4GztNkjkTpFPy9EHPsb9vh1z/view",
       "showInFrontend": true,
       "showInCv": true,
-      "credentialId": ""
+      "credentialId": "",
+      "resultShowInFrontend": true,
+      "resultShowInCv": true,
+      "credentialUrlShowInFrontend": true,
+      "credentialUrlShowInCv": true,
+      "credentialIdShowInFrontend": true,
+      "credentialIdShowInCv": false,
+      "cvPrintLinkUrl": false,
+      "result": ""
     },
     {
       "id": "cert-gub-iupc-2018",
@@ -711,7 +838,15 @@
       "credentialUrl": "https://drive.google.com/file/d/1tMyUGrbpxQ1PxBb-6ZzfWPEu1n8LFqt0/view",
       "showInFrontend": true,
       "showInCv": true,
-      "credentialId": ""
+      "credentialId": "",
+      "resultShowInFrontend": true,
+      "resultShowInCv": true,
+      "credentialUrlShowInFrontend": true,
+      "credentialUrlShowInCv": true,
+      "credentialIdShowInFrontend": true,
+      "credentialIdShowInCv": false,
+      "cvPrintLinkUrl": false,
+      "result": ""
     },
     {
       "id": "cert-we-can-buet",
@@ -724,7 +859,15 @@
       "credentialUrl": "https://drive.google.com/file/d/1m0Q5EzgDyw39QytCSIYJs9_aKtqhyMvZ/view",
       "showInFrontend": true,
       "showInCv": true,
-      "credentialId": ""
+      "credentialId": "",
+      "resultShowInFrontend": true,
+      "resultShowInCv": true,
+      "credentialUrlShowInFrontend": true,
+      "credentialUrlShowInCv": true,
+      "credentialIdShowInFrontend": true,
+      "credentialIdShowInCv": false,
+      "cvPrintLinkUrl": false,
+      "result": ""
     }
   ],
   "awards": [
@@ -751,21 +894,39 @@
       "title": "Accomplished Competitive Coder",
       "issuer": "Various Online Judges",
       "date": "2018-2023",
-      "description": "Solved 600+ problems in different online judges."
+      "description": "Solved 600+ problems in different online judges.",
+      "organization": "",
+      "category": "",
+      "icon": "trophy",
+      "year": "",
+      "showInFrontend": true,
+      "showInCv": false
     },
     {
       "id": "ach-2",
       "title": "Champion, HSTU Programming Contest",
       "issuer": "HSTU",
       "date": "2018 & 2019",
-      "description": "Back-to-back Champion at HSTU Programming Contest."
+      "description": "Back-to-back Champion at HSTU Programming Contest.",
+      "organization": "",
+      "category": "",
+      "icon": "trophy",
+      "year": "",
+      "showInFrontend": true,
+      "showInCv": false
     },
     {
       "id": "ach-3",
       "title": "Rangpur Division Champion",
       "issuer": "RUET IUPC & ICPC",
       "date": "2019, 2020",
-      "description": "Rangpur Division Champion in RUET IUPC (2019) and ICPC Dhaka Regional Preliminary 2020. Also participated in BUET IUPC 2019, GUB IUPC 2018, KUET BITFEST 2019."
+      "description": "Rangpur Division Champion in RUET IUPC (2019) and ICPC Dhaka Regional Preliminary 2020. Also participated in BUET IUPC 2019, GUB IUPC 2018, KUET BITFEST 2019.",
+      "organization": "",
+      "category": "",
+      "icon": "trophy",
+      "year": "",
+      "showInFrontend": true,
+      "showInCv": false
     },
     {
       "id": "ach-4",
@@ -774,7 +935,10 @@
       "date": "2018 - 2020",
       "description": "Represented Programmers Arena (HSTU) in four national-level contests, including GUB IUPC 2018, KUET BITFEST 2019, RUET IUPC (Technocracy) 2019, and the ICPC Asia Dhaka Regional Preliminary 2020 (Honorable Mention, Rangpur Division Champion).",
       "showInFrontend": true,
-      "showInCv": true
+      "showInCv": false,
+      "category": "",
+      "icon": "trophy",
+      "year": ""
     }
   ],
   "affiliations": [],
@@ -983,7 +1147,26 @@
       "cvEducationTitle": "",
       "experienceColumnTitle": "",
       "educationColumnTitle": "",
-      "educationHiddenText": ""
+      "educationHiddenText": "",
+      "cvSortByDate": true,
+      "cvGroupByCategory": true,
+      "cvCategoryGroups": [
+        {
+          "category": "Conference",
+          "heading": "Conference Participation",
+          "placement": "certifications"
+        },
+        {
+          "category": "Course",
+          "heading": "Professional Courses",
+          "placement": "certifications"
+        },
+        {
+          "category": "Competition",
+          "heading": "Programming Competitions",
+          "placement": "achievements"
+        }
+      ]
     },
     {
       "id": "achievements",
@@ -993,7 +1176,7 @@
       "topText": "KEY MILESTONES & HONORS",
       "description": "Major milestone accomplishments, hackathon & competition wins, and academic recognitions.",
       "showInFrontend": false,
-      "showInCv": false,
+      "showInCv": true,
       "showTitle": true,
       "showTopText": false,
       "showDescription": false,

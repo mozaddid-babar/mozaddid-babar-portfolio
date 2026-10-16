@@ -1,16 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ScrollReveal } from './ScrollReveal';
-import { Github, ExternalLink, Code2 } from 'lucide-react';
-import { Project, SectionConfig } from '../types';
+import { Github, ExternalLink, Code2, FlaskConical, Wrench } from 'lucide-react';
+import { Project, Publication, SectionConfig } from '../types';
+import { getProjectType, PROJECT_TYPE_LABELS } from '../utils/cvOrdering';
 import { SectionHeader } from './SectionHeader';
 
 interface ProjectsSectionProps {
   projects: Project[];
+  publications?: Publication[];
   isAlt?: boolean;
   sectionConfig?: SectionConfig;
 }
 
-export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects, isAlt = false, sectionConfig }) => {
+export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects, publications = [], isAlt = false, sectionConfig }) => {
   const visibleProjects = projects.filter(p => p.showInFrontend !== false);
   if (!visibleProjects || visibleProjects.length === 0) return null;
 
@@ -63,6 +65,13 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects, isAl
     const isEven = idx % 2 === 0;
     const githubUrl = project.githubShowInFrontend !== false ? project.githubUrl : undefined;
     const liveUrl = project.liveShowInFrontend !== false ? project.liveUrl : undefined;
+    const relatedPub = project.publicationShowInFrontend !== false && project.relatedPublicationId
+      ? publications.find(pub => pub.id === project.relatedPublicationId && pub.showInFrontend !== false)
+      : undefined;
+    const relatedPubHref = relatedPub
+      ? (relatedPub.doi ? (relatedPub.doi.startsWith('http') ? relatedPub.doi : `https://doi.org/${relatedPub.doi}`) : relatedPub.link)
+      : undefined;
+    const relatedPubIsPublished = !!relatedPub && ['Journal', 'Conference', 'Book Chapter', 'Workshop'].includes(relatedPub.category);
 
     return (
       <ScrollReveal
@@ -79,10 +88,31 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects, isAl
         >
           {/* Header Row */}
           <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100 dark:border-slate-800">
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold tracking-wider uppercase">
-              {project.category}
-            </span>
-            {project.date && (
+            <div className="flex items-center gap-2 min-w-0">
+              {project.showTypeBadge !== false && (
+                getProjectType(project) === 'research' ? (
+                  <span
+                    className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-sky-50 dark:bg-sky-950/60 border border-sky-200 dark:border-sky-800 text-sky-600 dark:text-sky-300"
+                    title={PROJECT_TYPE_LABELS.research}
+                    aria-label={PROJECT_TYPE_LABELS.research}
+                  >
+                    <FlaskConical className="w-3.5 h-3.5" />
+                  </span>
+                ) : (
+                  <span
+                    className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-300"
+                    title={PROJECT_TYPE_LABELS.technical}
+                    aria-label={PROJECT_TYPE_LABELS.technical}
+                  >
+                    <Wrench className="w-3.5 h-3.5" />
+                  </span>
+                )
+              )}
+              <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 font-mono text-[10px] font-bold tracking-wider uppercase">
+                {project.category}
+              </span>
+            </div>
+            {project.date && project.dateShowInFrontend !== false && (
               <span className="text-slate-500 dark:text-slate-400 font-mono text-xs">
                 {project.date}
               </span>
@@ -121,9 +151,37 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects, isAl
               </div>
             )}
           </div>
+          {project.role && project.roleShowInFrontend !== false && (
+            <p className="text-xs italic text-slate-500 dark:text-slate-400 mt-1">
+              {project.role}
+            </p>
+          )}
           <p className="text-sm text-slate-600 dark:text-slate-300 mt-2.5 leading-relaxed">
             {project.description}
           </p>
+          {project.highlights && project.highlights.length > 0 && project.highlightsShowInFrontend !== false && (
+            <ul className="mt-2 space-y-1 text-sm text-slate-600 dark:text-slate-300">
+              {project.highlights.map((h, hIdx) => (
+                <li key={hIdx} className="flex gap-2">
+                  <span className="mt-2 w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-500 shrink-0"></span>
+                  <span>{h}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {relatedPub && (
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              → {relatedPubIsPublished ? 'Published in' : `${relatedPub.category}:`}{' '}
+              {relatedPubHref ? (
+                <a href={relatedPubHref} target="_blank" rel="noreferrer" className="italic text-emerald-700 dark:text-emerald-400 hover:underline">
+                  {relatedPub.venue}
+                </a>
+              ) : (
+                <span className="italic">{relatedPub.venue}</span>
+              )}{' '}
+              ({relatedPub.year})
+            </p>
+          )}
 
           {/* Sub-container */}
           <div className={`mt-4 flex-1 flex flex-col justify-end ${displayImages.length > 0 ? 'pr-[100px] sm:pr-[150px]' : ''}`}>
@@ -134,7 +192,7 @@ export const ProjectsSection: React.FC<ProjectsSectionProps> = ({ projects, isAl
             )}
 
             {/* Tag Pills */}
-            {project.technologies && project.technologies.length > 0 && (
+            {project.technologies && project.technologies.length > 0 && project.technologiesShowInFrontend !== false && (
               <div className="flex flex-wrap gap-2.5">
                 {project.technologies.map((tech, tIdx) => (
                   <div key={tIdx} className="flex items-center text-xs font-mono text-slate-600 dark:text-slate-400">
